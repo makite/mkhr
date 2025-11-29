@@ -1,4 +1,3 @@
-import * as React from "react";
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -12,6 +11,7 @@ import {
   type VisibilityState,
 } from "@tanstack/react-table";
 import { ArrowUpDown, ChevronDown, MoreHorizontal } from "lucide-react";
+import * as React from "react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -34,27 +34,79 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-const data: Scales[] = [
+const data: Employees[] = [
   {
-    id: "m5gr84i9",
-    name: "1",
+    id: "select",
+    firstName: "Selomon",
+    middleName: "Abebe",
+    lastName: "Haile",
+    phoneNo: "251909090909",
+    email: "text@gmail.com",
+    tgHandle: "@sola_19",
+    position: "JCBS",
+    department: "App and Sw Dev",
+    levelOfEdu: "BSc",
+    fieldOfStudy: "CS",
+    experience: "1",
+    empType: "permanent",
+    annualLeave: 16,
+    temporaryLeave: 0,
   },
   {
-    id: "3u1reuv4",
-    name: "2",
+    id: "select",
+    firstName: "Berekt",
+    middleName: "Weldegiorgis",
+    lastName: "Tasew",
+    phoneNo: "251909090909",
+    email: "text@gmail.com",
+    tgHandle: "@bekie21",
+    position: "JCBS",
+    department: "App and Sw Dev",
+    levelOfEdu: "BSc",
+    fieldOfStudy: "SWE",
+    experience: "2",
+    empType: "permanent",
+    annualLeave: 10,
+    temporaryLeave: 2,
   },
   {
-    id: "derv1ws0",
-    name: "3",
+    id: "select",
+    firstName: "Bezawit",
+    middleName: "Tibebu",
+    lastName: "Alemu",
+    phoneNo: "251909090909",
+    email: "text@gmail.com",
+    tgHandle: "@bezbeza",
+    position: "JCBS",
+    department: "App and Sw Dev",
+    levelOfEdu: "MSc",
+    fieldOfStudy: "CS",
+    experience: "5",
+    empType: "temporary",
+    annualLeave: 0,
+    temporaryLeave: 0,
   },
 ];
 
-export type Scales = {
+export type Employees = {
   id: string;
-  name: string;
+  firstName: string;
+  middleName: string;
+  lastName: string;
+  phoneNo: string;
+  email: string;
+  tgHandle: string;
+  position: string;
+  department: string;
+  levelOfEdu: string;
+  fieldOfStudy: string;
+  experience: string;
+  empType: string;
+  annualLeave: number;
+  temporaryLeave: number;
 };
 
-const columns: ColumnDef<Scales>[] = [
+const columns: ColumnDef<Employees>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -78,24 +130,128 @@ const columns: ColumnDef<Scales>[] = [
     enableHiding: false,
   },
   {
-    accessorKey: "name",
+    accessorKey: "firstName",
     header: ({ column }) => (
       <Button
+        className="!px-0"
         variant="ghost"
         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
       >
-        <div>Name</div> <ArrowUpDown />
+        <div>First name</div> <ArrowUpDown />
       </Button>
     ),
     cell: ({ row }) => (
-      <div className="font-medium">{row.getValue("name")}</div>
+      <div className="font-medium">{row.getValue("firstName")}</div>
     ),
+  },
+  {
+    accessorKey: "middleName",
+    header: ({ column }) => (
+      <Button
+        className="!px-0"
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+      >
+        <div>Middle name</div> <ArrowUpDown />
+      </Button>
+    ),
+    cell: ({ row }) => (
+      <div className="font-medium">{row.getValue("middleName")}</div>
+    ),
+  },
+  {
+    accessorKey: "lastName",
+    header: ({ column }) => (
+      <Button
+        className="!px-0"
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+      >
+        <div>Last name</div> <ArrowUpDown />
+      </Button>
+    ),
+    cell: ({ row }) => (
+      <div className="font-medium">{row.getValue("lastName")}</div>
+    ),
+  },
+  {
+    accessorKey: "phoneNo",
+    header: ({ column }) => (
+      <Button
+        className="!px-0"
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+      >
+        <div>Phone number</div>
+      </Button>
+    ),
+    cell: ({ row }) => (
+      <div className="text-right w-16">{row.getValue("phoneNo")}</div>
+    ),
+  },
+  {
+    accessorKey: "email",
+    header: ({ column }) => (
+      <Button
+        className="!px-0"
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+      >
+        <div>Email</div>
+      </Button>
+    ),
+    cell: ({ row }) => (
+      <div className="text-right w-18 mr-10">{row.getValue("email")}</div>
+    ),
+  },
+  {
+    accessorKey: "tgHandle",
+    header: "TG Handle",
+    cell: ({ row }) => (
+      <div className="truncate max-w-xs">{row.getValue("tgHandle")}</div>
+    ),
+  },
+  {
+    accessorKey: "position",
+    header: "Position",
+    cell: ({ row }) => <div>{row.getValue("position")}</div>,
+  },
+  {
+    accessorKey: "department",
+    header: "Department",
+    cell: ({ row }) => <div>{row.getValue("department")}</div>,
+  },
+  {
+    accessorKey: "levelOfEdu",
+    header: "Level of EDU",
+    cell: ({ row }) => <div>{row.getValue("levelOfEdu")}</div>,
+  },
+  {
+    accessorKey: "fieldOfStudy",
+    header: "Field of Study",
+    cell: ({ row }) => <div>{row.getValue("fieldOfStudy")}</div>,
+  },
+  {
+    id: "experience",
+    accessorKey: "experience",
+    header: "Experience",
+    cell: ({ row }) => <div>{row.getValue("experience")}</div>,
+  },
+  {
+    accessorKey: "annualLeave",
+    header: "Annual Leave",
+    cell: ({ row }) => <div>{row.getValue("annualLeave")}</div>,
+  },
+  {
+    accessorKey: "temporaryLeave",
+    header: "Temp Leave",
+    cell: ({ row }) => <div>{row.getValue("temporaryLeave")}</div>,
   },
   {
     id: "actions",
     enableHiding: false,
     cell: ({ row }) => {
-      const payment = row.original;
+      const position = row.original;
 
       return (
         <DropdownMenu>
@@ -108,13 +264,14 @@ const columns: ColumnDef<Scales>[] = [
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
             <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(payment.id)}
+              onClick={() => navigator.clipboard.writeText(position.id)}
             >
-              Copy payment ID
+              Copy position ID
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>View customer</DropdownMenuItem>
-            <DropdownMenuItem>View payment details</DropdownMenuItem>
+            <DropdownMenuItem>View</DropdownMenuItem>
+            <DropdownMenuItem>Edit</DropdownMenuItem>
+            <DropdownMenuItem>Delete</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       );
@@ -122,13 +279,17 @@ const columns: ColumnDef<Scales>[] = [
   },
 ];
 
-export function ScalesDataTable() {
+export function EmployeesTable() {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
   );
   const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({});
+    React.useState<VisibilityState>({
+      experience: false,
+      annualLeave: false,
+      temporaryLeave: false,
+    });
   const [rowSelection, setRowSelection] = React.useState({});
 
   const table = useReactTable({
@@ -154,11 +315,9 @@ export function ScalesDataTable() {
     <div className="w-full">
       <div className="flex items-center py-4">
         <Input
-          placeholder="Filter emails..."
-          value={(table.getColumn("email")?.getFilterValue() as string) ?? ""}
-          onChange={(event) =>
-            table.getColumn("email")?.setFilterValue(event.target.value)
-          }
+          placeholder="Filter positions..."
+          value={(table.getState().globalFilter as string) ?? ""}
+          onChange={(event) => table.setGlobalFilter(event.target.value)}
           className="max-w-sm"
         />
         <DropdownMenu>
@@ -188,7 +347,7 @@ export function ScalesDataTable() {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <div className="overflow-hidden rounded-md border">
+      <div className="overflow-hidden rounded-md border ">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (

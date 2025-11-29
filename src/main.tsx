@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App.tsx";
 import { BrowserRouter, Route, Routes } from "react-router";
+import RegisterEmployee from "./pages/register-employee.tsx";
 const Dashboard = lazy(() => import("./pages/dashboard.tsx"));
 const AddScalePage = lazy(() => import("./pages/add-scale.tsx"));
 const AddBranchPage = lazy(() => import("./pages/add-branch.tsx"));
@@ -31,10 +32,7 @@ createRoot(document.getElementById("root")!).render(
             <Route path="settings/add_branch" element={<AddBranchPage />} />
             <Route path="settings/add_scale" element={<AddScalePage />} />
             <Route path="settings/add_empscale" element={<AddEmpscalePage />} />
-            <Route
-              path="administration"
-              element={<div>HR Administration Page</div>}
-            />
+            <Route path="administration" element={<RegisterEmployee />} />
           </Route>
         </Route>
         <Route path="*" element={<NotFound />} />
