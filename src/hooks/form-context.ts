@@ -1,6 +1,6 @@
-import DatePicker from "@/components/form/date-picker";
-import SelectEl from "@/components/form/select";
-import TextInput from "@/components/form/text-input";
+import DatePicker from "@/components/form/components/date-picker";
+import SelectEl from "@/components/form/components/select";
+import TextInput from "@/components/form/components/text-input";
 import { createFormHook, createFormHookContexts } from "@tanstack/react-form";
 
 export const { fieldContext, formContext, useFieldContext, useFormContext } =
