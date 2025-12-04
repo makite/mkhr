@@ -2,6 +2,7 @@ import EmployeeForm from "../form/employee-form";
 import type { Employees } from "./employees-table";
 // import EmployeeView from "./EmployeeView";
 // import EmployeeDeleteConfirmation from "./EmployeeDeleteConfirmation";
+import type { RowData } from "@tanstack/react-table";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -77,21 +78,14 @@ export default function EmployeeActionDialogs({
         open={activeDialog === "edit"}
         onOpenChange={(open) => handleOpenChange("edit", open)}
       >
-        <DialogContent className="sm:max-w-[800px]">
+        <DialogContent className="sm:max-w-[1200px] max-h-[90svh]">
           <DialogHeader>
             <DialogTitle>{`Edit ${position.firstName}`}</DialogTitle>
             <DialogDescription>
               Make changes to the employee profile here.
             </DialogDescription>
           </DialogHeader>
-          <EmployeeForm employee={position} />
-          <DialogFooter className="sm:justify-start">
-            <DialogClose asChild>
-              <Button type="button" variant="secondary">
-                Close
-              </Button>
-            </DialogClose>
-          </DialogFooter>
+          <EmployeeForm employee={position} mode="edit" />
         </DialogContent>
       </Dialog>
 

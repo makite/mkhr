@@ -1,5 +1,4 @@
 import { Button } from "@/components/ui/button";
-import * as z from "zod";
 import {
   Card,
   CardContent,
@@ -8,21 +7,62 @@ import {
 } from "@/components/ui/card";
 import { Field, FieldGroup } from "@/components/ui/field";
 import { useAppForm } from "@/hooks/form-context";
+import * as z from "zod";
 
 import { addEmpFormSchema, regEmpFormOpts } from "@/schema/reg-emp-form";
+import type { Grades } from "../grades-table";
+import type { Scales } from "../scales-table";
 
-const grades = ["I", "II", "III", "IV"];
+const grades: Grades[] = [
+  {
+    id: "m5gr84i9",
+    name: "I",
+  },
+  {
+    id: "3u1reuv4",
+    name: "II",
+  },
+  {
+    id: "derv1ws0",
+    name: "III",
+  },
+];
 
-const scales = ["1", "2", "3"];
+const scales: Scales[] = [
+  {
+    id: "m5gr84i9",
+    name: "1",
+  },
+  {
+    id: "3u1reuv4",
+    name: "2",
+  },
+  {
+    id: "derv1ws0",
+    name: "3",
+  },
+];
 
 const employeeTypes = ["Permanent", "Temporary"];
 export default function EmployeeForm({
   employee,
+  mode,
 }: {
   employee: z.infer<typeof addEmpFormSchema>;
+  mode: string | undefined;
 }) {
+  const regFormOpts =
+    mode === "edit"
+      ? {
+          ...regEmpFormOpts,
+          defaultValues: {
+            ...employee,
+          },
+        }
+      : { ...regEmpFormOpts };
+  console.log(regFormOpts);
   const form = useAppForm({
-    ...regEmpFormOpts,
+    ...regFormOpts,
     validators: {
       onSubmit: addEmpFormSchema,
     },
@@ -33,9 +73,6 @@ export default function EmployeeForm({
   });
   return (
     <Card className="shadow-none">
-      <CardHeader>
-        <div>form for employement registration</div>
-      </CardHeader>
       <CardContent>
         <form
           id="reg-emp-form"
@@ -44,7 +81,7 @@ export default function EmployeeForm({
             form.handleSubmit();
           }}
         >
-          <FieldGroup className="grid grid-cols-[1fr_1fr_1fr_auto] gap-x-8">
+          <FieldGroup className="grid grid-cols-[1fr_1fr_1fr_1fr] gap-x-8">
             {/* <form.AppField
               name="id"
               children={(field) => {
@@ -97,6 +134,7 @@ export default function EmployeeForm({
                 );
               }}
             />
+
             <form.AppField
               name="phoneNo"
               children={(field) => {
@@ -138,7 +176,7 @@ export default function EmployeeForm({
               }}
             />
             <form.AppField
-              name="telUserName"
+              name="tgHandle"
               children={(field) => {
                 return (
                   <field.TextInput
@@ -205,7 +243,7 @@ export default function EmployeeForm({
             />
 
             <form.AppField
-              name="employeeType"
+              name="empType"
               children={(field) => {
                 return (
                   <field.SelectEl
@@ -237,7 +275,7 @@ export default function EmployeeForm({
               children={(field) => {
                 return (
                   <field.SelectEl
-                    selectItems={grades}
+                    selectItems={grades.map((grade) => grade.name)}
                     selectId="select-grades"
                     label="Grade"
                     placeHolder="Select"
@@ -250,7 +288,7 @@ export default function EmployeeForm({
               children={(field) => {
                 return (
                   <field.SelectEl
-                    selectItems={scales}
+                    selectItems={scales.map((scale) => scale.name)}
                     selectId="select-scales"
                     label="Scale"
                     placeHolder="Select"
@@ -267,7 +305,7 @@ export default function EmployeeForm({
             type="button"
             form="reg-emp-form"
             variant="outline"
-            onClick={() => form.reset()}
+            onClick={() => form.reset(regEmpFormOpts.defaultValues)}
           >
             reset
           </Button>

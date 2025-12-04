@@ -34,8 +34,13 @@ export default function SelectEl({
   className?: string;
   description?: string;
 }) {
-  const field = useFieldContext<string>();
+  const field = useFieldContext<any>();
   const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
+  const rawValue = field.state.value;
+  const displayValue =
+    typeof rawValue === "object" && rawValue !== null
+      ? rawValue.name // Assuming your objects always use 'name' for the label
+      : rawValue;
   return (
     <Field
       // orientation="responsive"
@@ -47,8 +52,9 @@ export default function SelectEl({
       <FieldContent>
         <Select
           name={field.name}
-          value={field.state.value}
+          value={displayValue || undefined}
           onValueChange={field.handleChange}
+          defaultValue={defaultValue}
         >
           <SelectTrigger
             id={selectId}
@@ -63,7 +69,7 @@ export default function SelectEl({
           >
             <SelectGroup>
               <SelectLabel>{label}</SelectLabel>
-              {defaultValue ? (
+              {defaultValue && !selectItems.includes(defaultValue) ? (
                 <SelectItem value={defaultValue}>{defaultValue}</SelectItem>
               ) : undefined}
               <SelectSeparator />

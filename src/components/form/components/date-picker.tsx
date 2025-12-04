@@ -27,7 +27,6 @@ export default function DatePicker({
   fieldLabel: string;
 }) {
   const field = useFieldContext<Date>();
-  console.log(field);
   const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
 
   return (
