@@ -1,10 +1,20 @@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { lazy } from "react";
-const BranchesPage = lazy(() => import("./branches-page.tsx"));
-const GradesPage = lazy(() => import("./grades-page.tsx"));
-const PostionPage = lazy(() => import("./position-page.tsx"));
-const ScalesPage = lazy(() => import("./scales-page.tsx"));
-const EmpscalePage = lazy(() => import("./empscale-page.tsx"));
+const BranchesTab = lazy(
+  () => import("../components/employee_settings/tabs/branches-tab.tsx")
+);
+const GradesTab = lazy(
+  () => import("../components/employee_settings/tabs/grades-tab.tsx")
+);
+const PositionTab = lazy(
+  () => import("../components/employee_settings/tabs/position-tab.tsx")
+);
+const ScalesTab = lazy(
+  () => import("../components/employee_settings/tabs/scales-tab.tsx")
+);
+const EmpscaleTab = lazy(
+  () => import("../components/employee_settings/tabs/empscale-tab.tsx")
+);
 
 export default function HRSettings() {
   return (
@@ -21,11 +31,11 @@ export default function HRSettings() {
           <TabsTrigger value="scales">Scales</TabsTrigger>
           <TabsTrigger value="empscales">Emp Scales</TabsTrigger>
         </TabsList>
-        <PostionPage />
-        <GradesPage />
-        <BranchesPage />
-        <ScalesPage />
-        <EmpscalePage />
+        <PositionTab />
+        <GradesTab />
+        <BranchesTab />
+        <ScalesTab />
+        <EmpscaleTab />
       </Tabs>
     </div>
   );

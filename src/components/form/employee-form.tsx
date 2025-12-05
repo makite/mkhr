@@ -10,8 +10,8 @@ import { useAppForm } from "@/hooks/form-context";
 import * as z from "zod";
 
 import { addEmpFormSchema, regEmpFormOpts } from "@/schema/reg-emp-form";
-import type { Grades } from "../grades-table";
-import type { Scales } from "../scales-table";
+import type { Grades } from "../employee_settings/tables/grades-table";
+import type { Scales } from "../employee_settings/tables/scales-table";
 
 const grades: Grades[] = [
   {
