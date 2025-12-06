@@ -8,7 +8,9 @@ import {
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
+  type OnChangeFn,
   type RowData,
+  type RowSelectionState,
   type SortingState,
   useReactTable,
   type VisibilityState,
@@ -33,85 +35,7 @@ import ColumnsList from "./columns-list";
 import { Filter } from "./filter";
 import TableRowOptions from "./table-row-options";
 
-const data: Employees[] = [
-  {
-    id: "select",
-    firstName: "Selomon",
-    middleName: "Abebe",
-    lastName: "Haile",
-    dob: new Date("1999-08-12"),
-    phoneNo: "251909090909",
-    email: "text@gmail.com",
-    tgHandle: "@sola_19",
-    position: "JCBS",
-    department: "App and Sw Dev",
-    levelOfEdu: "BSc",
-    fieldOfStudy: "CS",
-    grade: {
-      id: "3u1reuv4",
-      name: "II",
-    },
-    scale: {
-      id: "m5gr84i9",
-      name: "1",
-    },
-    experience: "1",
-    empType: "Permanent",
-    annualLeave: 16,
-    temporaryLeave: 0,
-  },
-  {
-    id: "select",
-    firstName: "Berekt",
-    middleName: "Weldegiorgis",
-    lastName: "Tasew",
-    dob: new Date("1995-01-12"),
-    phoneNo: "251909090909",
-    email: "text@gmail.com",
-    tgHandle: "@bekie21",
-    position: "JCBS",
-    department: "App and Sw Dev",
-    levelOfEdu: "BSc",
-    fieldOfStudy: "SWE",
-    grade: {
-      id: "derv1ws0",
-      name: "III",
-    },
-    scale: {
-      id: "3u1reuv4",
-      name: "2",
-    },
-    experience: "2",
-    empType: "Permanent",
-    annualLeave: 10,
-    temporaryLeave: 2,
-  },
-  {
-    id: "select",
-    firstName: "Bezawit",
-    middleName: "Tibebu",
-    lastName: "Alemu",
-    dob: new Date("1992-02-12"),
-    phoneNo: "251909090909",
-    email: "text@gmail.com",
-    tgHandle: "@bezbeza",
-    position: "JCBS",
-    department: "App and Sw Dev",
-    levelOfEdu: "MSc",
-    fieldOfStudy: "CS",
-    grade: { id: "m5gr84i9", name: "I" },
-    scale: {
-      id: "derv1ws0",
-      name: "3",
-    },
-    experience: "5",
-    empType: "Temporary",
-    annualLeave: 0,
-    temporaryLeave: 0,
-  },
-];
-
-export type Employees = {
+export type Employee = {
   id: string;
   firstName: string;
   middleName: string;
@@ -132,6 +56,12 @@ export type Employees = {
   temporaryLeave: number;
 };
 
+interface EmployeesTableProps {
+  data: Employee[];
+  rowSelection: RowSelectionState;
+  setRowSelection: OnChangeFn<RowSelectionState>;
+}
+
 declare module "@tanstack/react-table" {
   //allows us to define custom properties for our columns
   interface ColumnMeta<TData extends RowData, TValue> {
@@ -139,8 +69,12 @@ declare module "@tanstack/react-table" {
   }
 }
 
-export function EmployeesTable() {
-  const columns = React.useMemo<ColumnDef<Employees, any>[]>(
+export function EmployeesTable({
+  data,
+  rowSelection,
+  setRowSelection,
+}: EmployeesTableProps) {
+  const columns = React.useMemo<ColumnDef<Employee, any>[]>(
     () => [
       {
         id: "select",
@@ -446,11 +380,11 @@ export function EmployeesTable() {
       scale: false,
       grade: false,
     });
-  const [rowSelection, setRowSelection] = React.useState({});
 
   const table = useReactTable({
     data,
     columns,
+    getRowId: (row) => row.id,
     state: {
       sorting,
       columnFilters,
@@ -473,7 +407,7 @@ export function EmployeesTable() {
     <div className="w-full">
       <div className="flex items-center py-4">
         <Input
-          placeholder="Filter positions..."
+          placeholder="Filter..."
           value={(table.getState().globalFilter as string) ?? ""}
           onChange={(event) => table.setGlobalFilter(event.target.value)}
           className="max-w-sm"

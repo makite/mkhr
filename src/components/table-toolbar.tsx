@@ -81,7 +81,7 @@ export default function TableToolbar({
             <PlusIcon /> Add New
           </Button>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-[800px]">{children}</DialogContent>
+        <DialogContent className="sm:max-w-[1200px]">{children}</DialogContent>
       </Dialog>
 
       <AlertDialog>

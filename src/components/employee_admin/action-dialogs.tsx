@@ -44,7 +44,6 @@ export default function EmployeeActionDialogs({
     }
     // Note: We don't need to do anything if it's opening, as the parent controls 'activeDialog'
   };
-  console.log(JSON.stringify(employee));
 
   return (
     <>

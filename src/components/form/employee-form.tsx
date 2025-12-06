@@ -48,8 +48,8 @@ export default function EmployeeForm({
   employee,
   mode,
 }: {
-  employee: z.infer<typeof addEmpFormSchema>;
-  mode: string | undefined;
+  employee?: z.infer<typeof addEmpFormSchema>;
+  mode?: string | undefined;
 }) {
   const regFormOpts =
     mode === "edit"
