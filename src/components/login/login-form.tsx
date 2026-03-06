@@ -69,7 +69,7 @@ export function LoginForm({
                 <Input
                   id="username"
                   type="text"
-                  placeholder="MK0001"
+                  placeholder="admin@mk.com"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   required
@@ -82,6 +82,7 @@ export function LoginForm({
                 <InputGroup>
                   <InputGroupInput
                     id="password"
+                    name="password"
                     type={showPassword ? "text" : "password"}
                     placeholder="********"
                     value={password}
@@ -107,6 +108,7 @@ export function LoginForm({
                 <label className="flex items-center gap-2">
                   <input
                     type="checkbox"
+                    name="remember"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
                     className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-2 focus:ring-green-600"
