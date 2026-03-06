@@ -20,6 +20,7 @@ export function LoginForm({
   const [showPassword, setShowPassword] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -41,19 +42,28 @@ export function LoginForm({
   };
 
   return (
-    <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col justify-center items-center gap-4">
-            <CardTitle>
-              <img src="/mk_logo.png" alt="mk logo" className="w-24 h-24" />
-            </CardTitle>
-            <CardTitle className="text-lg">Login to your account</CardTitle>
-          </div>
+    <div
+      className={cn(
+        "min-h-screen flex items-center justify-center p-4",
+        className,
+      )}
+      {...props}
+    >
+      <Card className="w-full max-w-md rounded-2xl shadow-lg overflow-hidden">
+        <CardHeader className="text-center py-6">
+          <img
+            src="/mk_logo.png"
+            alt="MK Logo"
+            className="w-24 h-24 mx-auto mb-4"
+          />
+          <CardTitle className="text-2xl font-bold text-gray-800">
+            Login to Your Account
+          </CardTitle>
         </CardHeader>
-        <CardContent>
+
+        <CardContent className="p-8 bg-white">
           <form onSubmit={handleSubmit}>
-            <FieldGroup>
+            <FieldGroup className="space-y-6">
               <Field>
                 <FieldLabel htmlFor="username">Username</FieldLabel>
                 <Input
@@ -63,8 +73,10 @@ export function LoginForm({
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   required
+                  className="border-gray-300 focus:ring-2 focus:ring-green-600 focus:border-green-600"
                 />
               </Field>
+
               <Field>
                 <FieldLabel htmlFor="password">Password</FieldLabel>
                 <InputGroup>
@@ -75,6 +87,7 @@ export function LoginForm({
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
+                    className="border-gray-300 focus:ring-2 focus:ring-green-600 focus:border-green-600"
                   />
                   <InputGroupAddon align="inline-end">
                     <InputGroupButton
@@ -90,13 +103,28 @@ export function LoginForm({
                 </InputGroup>
               </Field>
 
-              {error && <p className="text-red-600 text-sm">{error}</p>}
+              <div className="flex items-center justify-between text-sm text-gray-600">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-2 focus:ring-green-600"
+                  />
+                  Remember me
+                </label>
+                <a href="/forgot-password" className="hover:text-green-700">
+                  Forgot password?
+                </a>
+              </div>
+
+              {error && <p className="text-red-600 text-sm mt-1">{error}</p>}
 
               <Field>
                 <Button
-                  className="bg-[#0E381F] hover:cursor-pointer hover:bg-[#227343]"
                   type="submit"
                   disabled={loading}
+                  className="w-full bg-green-700 hover:bg-green-800 text-white font-semibold py-3 rounded-lg shadow-lg transition-all duration-300"
                 >
                   {loading ? "Logging in..." : "Login"}
                 </Button>
