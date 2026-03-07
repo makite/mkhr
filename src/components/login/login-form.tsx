@@ -126,7 +126,7 @@ export function LoginForm({
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-green-700 hover:bg-green-800 text-white font-semibold py-3 rounded-lg shadow-lg transition-all duration-300"
+                  className="w-full bg-primary hover:bg-secondary-foreground text-white font-semibold py-3 rounded-lg shadow-lg transition-all duration-300"
                 >
                   {loading ? "Logging in..." : "Login"}
                 </Button>
