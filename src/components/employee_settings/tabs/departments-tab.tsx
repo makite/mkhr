@@ -1,5 +1,5 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState, useEffect } from "react";
 import { type ColumnDef } from "@tanstack/react-table";
 import {
@@ -8,7 +8,7 @@ import {
   Power,
   PowerOff,
   GitBranch,
-  MapPin,
+  Users,
   ChevronRight,
   ChevronDown,
 } from "lucide-react";
@@ -20,58 +20,50 @@ import { DataTable, type Action } from "@/components/shared/table-data";
 import { type FormField, FormDialog } from "@/components/shared/form-dialog";
 import { useToast } from "@/hooks/use-toast";
 
-interface Branch {
+interface Department {
   id: string;
   code: string;
   name: string;
   level: number | null;
-  branchType: string | null;
-  region: string | null;
-  zone: string | null;
-  district: string | null;
-  city: string | null;
-  address: string | null;
-  phone: string | null;
-  email: string | null;
-  isHeadOffice: boolean;
+  path: string | null;
+  description: string | null;
   isActive: boolean;
   parentId: string | null;
-  path: string | null;
+  headOfDeptId: string | null;
+  companyId: string;
+  createdAt: string;
+  updatedAt: string;
+  headOfDept: null | any;
   _count: {
-    children: number;
     employees: number;
+    children: number;
   };
-  children?: Branch[];
+  children?: Department[];
+  employeeCount?: number;
+  childCount?: number;
 }
 
-export function BranchesTab() {
-  const [data, setData] = useState<Branch[]>([]);
-  const [treeData, setTreeData] = useState<Branch[]>([]);
-  const [branches, setBranches] = useState<Branch[]>([]);
+export function DepartmentsTab() {
+  const [data, setData] = useState<Department[]>([]);
+  const [treeData, setTreeData] = useState<Department[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"table" | "tree">("table");
-  const [editingItem, setEditingItem] = useState<Branch | null>(null);
+  const [editingItem, setEditingItem] = useState<Department | null>(null);
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const [formValues, setFormValues] = useState({
     code: "",
     name: "",
-    level: "1",
-    branchType: "",
-    region: "",
-    zone: "",
-    district: "",
-    city: "",
-    address: "",
-    phone: "",
-    email: "",
-    parentId: "none",
-    isHeadOffice: false,
+    level: 1,
+    description: "",
+    parentId: "none", // Use "none" instead of empty string
+    headOfDeptId: "none", // Use "none" for optional selects too
     isActive: true,
   });
   const { toast } = useToast();
 
-  const columns: ColumnDef<Branch>[] = [
+  const columns: ColumnDef<Department>[] = [
     {
       id: "code",
       header: "Code",
@@ -87,13 +79,13 @@ export function BranchesTab() {
       header: "Name",
       accessorFn: (row) => row.name,
       cell: ({ row }) => (
-        <div className="font-medium">
-          {row.original.name}
-          {row.original.isHeadOffice && (
-            <Badge variant="default" className="ml-2 text-xs">
-              HQ
+        <div className="font-medium flex items-center gap-2">
+          {row.original.path && (
+            <Badge variant="outline" className="text-xs">
+              {row.original.path}
             </Badge>
           )}
+          {row.original.name}
         </div>
       ),
     },
@@ -101,36 +93,48 @@ export function BranchesTab() {
       id: "level",
       header: "Level",
       accessorFn: (row) => row.level,
-      cell: ({ row }) => {
-        const level = row.original.level;
-        const labels = ["", "National", "Region", "Zone", "District", "Local"];
-        return (
-          <Badge variant="secondary">
-            {level ? labels[level] || `Level ${level}` : "-"}
-          </Badge>
-        );
+      cell: ({ row }) => (
+        <Badge variant="secondary">
+          {row.original.level ? `Level ${row.original.level}` : "-"}
+        </Badge>
+      ),
+    },
+    {
+      id: "parent",
+      header: "Parent",
+      accessorFn: (row) => {
+        if (!row.parentId) return "Root";
+        const parent = data.find((d) => d.id === row.parentId);
+        return parent?.name || "-";
       },
-    },
-    {
-      id: "branchType",
-      header: "Type",
-      accessorFn: (row) => row.branchType,
       cell: ({ row }) => (
-        <Badge variant="outline">{row.original.branchType || "-"}</Badge>
-      ),
-    },
-    {
-      id: "location",
-      header: "Location",
-      accessorFn: (row) => `${row.region || ""} ${row.city || ""}`,
-      cell: ({ row }) => (
-        <div className="text-sm">
-          {row.original.region && <div>{row.original.region}</div>}
-          {row.original.city && (
-            <div className="text-muted-foreground">{row.original.city}</div>
+        <span className="text-sm">
+          {row.original.parentId ? (
+            <Badge variant="outline">
+              {data.find((d) => d.id === row.original.parentId)?.name ||
+                "Unknown"}
+            </Badge>
+          ) : (
+            <span className="text-muted-foreground">Root</span>
           )}
-        </div>
+        </span>
       ),
+    },
+    {
+      id: "head",
+      header: "Head",
+      accessorFn: (row) => row.headOfDept,
+      cell: ({ row }) => (
+        <span className="text-sm text-muted-foreground">
+          {row.original.headOfDept ? "Assigned" : "-"}
+        </span>
+      ),
+    },
+    {
+      id: "description",
+      header: "Description",
+      accessorFn: (row) => row.description,
+      cell: ({ row }) => row.original.description || "-",
     },
     {
       id: "usage",
@@ -143,14 +147,14 @@ export function BranchesTab() {
             {row.original._count?.children || 0}
           </Badge>
           <Badge variant="outline" className="flex items-center gap-1">
-            <MapPin className="h-3 w-3" /> {row.original._count?.employees || 0}
+            <Users className="h-3 w-3" /> {row.original._count?.employees || 0}
           </Badge>
         </div>
       ),
     },
   ];
 
-  const actions: Action<Branch>[] = [
+  const actions: Action<Department>[] = [
     {
       label: "Edit",
       icon: <Pencil className="h-4 w-4" />,
@@ -159,17 +163,10 @@ export function BranchesTab() {
         setFormValues({
           code: item.code,
           name: item.name,
-          level: item.level?.toString() || "1",
-          branchType: item.branchType || "",
-          region: item.region || "",
-          zone: item.zone || "",
-          district: item.district || "",
-          city: item.city || "",
-          address: item.address || "",
-          phone: item.phone || "",
-          email: item.email || "",
+          level: item.level || 1,
+          description: item.description || "",
           parentId: item.parentId || "none",
-          isHeadOffice: item.isHeadOffice || false,
+          headOfDeptId: item.headOfDeptId || "none",
           isActive: item.isActive,
         });
         setIsDialogOpen(true);
@@ -185,10 +182,12 @@ export function BranchesTab() {
         ),
       onClick: async (item) => {
         try {
-          await api.put(`/branches/${item.id}`, { isActive: !item.isActive });
+          await api.put(`/departments/${item.id}`, {
+            isActive: !item.isActive,
+          });
           toast({
             title: "Success",
-            description: `Branch ${item.isActive ? "deactivated" : "activated"} successfully`,
+            description: `Department ${item.isActive ? "deactivated" : "activated"} successfully`,
           });
           fetchData();
           fetchTreeData();
@@ -206,12 +205,13 @@ export function BranchesTab() {
       label: "Delete",
       icon: <Trash2 className="h-4 w-4" />,
       onClick: async (item) => {
-        if (!confirm("Are you sure you want to delete this branch?")) return;
+        if (!confirm("Are you sure you want to delete this department?"))
+          return;
         try {
-          await api.delete(`/branches/${item.id}`);
+          await api.delete(`/departments/${item.id}`);
           toast({
             title: "Success",
-            description: "Branch deleted successfully",
+            description: "Department deleted successfully",
           });
           fetchData();
           fetchTreeData();
@@ -235,7 +235,7 @@ export function BranchesTab() {
       name: "code",
       label: "Code",
       type: "text",
-      placeholder: "e.g., HQ, ETH-AA-BOLE",
+      placeholder: "e.g., ENG, HR, FIN",
       required: true,
       disabled: !!editingItem,
     },
@@ -243,91 +243,38 @@ export function BranchesTab() {
       name: "name",
       label: "Name",
       type: "text",
-      placeholder: "e.g., Head Office, Bole Branch",
+      placeholder: "e.g., Engineering, Human Resources",
       required: true,
     },
     {
       name: "parentId",
-      label: "Parent Branch",
+      label: "Parent Department",
       type: "select",
-      placeholder: "Select parent branch",
-      options: branches
-        .filter((b) => b.id !== editingItem?.id)
-        .map((b) => ({ value: b.id, label: `${b.name} (${b.code})` })),
+      placeholder: "Select parent department",
+      options: departments
+        .filter((d) => d.id !== editingItem?.id)
+        .map((d) => ({ value: d.id, label: `${d.name} (${d.code})` })),
+      // Don't include "none" in options - we'll handle it in the dialog
     },
     {
       name: "level",
       label: "Level",
-      type: "select",
-      placeholder: "Select level",
+      type: "number",
+      placeholder: "1-6",
       required: true,
-      options: [
-        { value: "1", label: "1 - National" },
-        { value: "2", label: "2 - Region" },
-        { value: "3", label: "3 - Zone" },
-        { value: "4", label: "4 - District" },
-        { value: "5", label: "5 - Local" },
-      ],
     },
     {
-      name: "branchType",
-      label: "Branch Type",
+      name: "headOfDeptId",
+      label: "Department Head",
       type: "select",
-      placeholder: "Select type",
-      options: [
-        { value: "NATIONAL", label: "National" },
-        { value: "REGIONAL", label: "Regional" },
-        { value: "ZONE", label: "Zone" },
-        { value: "DISTRICT", label: "District" },
-        { value: "LOCAL", label: "Local" },
-      ],
+      placeholder: "Select head (optional)",
+      options: [], // You'd fetch employees here
     },
     {
-      name: "region",
-      label: "Region",
-      type: "text",
-      placeholder: "e.g., Addis Ababa, Oromia",
-    },
-    {
-      name: "zone",
-      label: "Zone",
-      type: "text",
-      placeholder: "e.g., East Addis, North Zone",
-    },
-    {
-      name: "district",
-      label: "District",
-      type: "text",
-      placeholder: "e.g., Bole, Yeka",
-    },
-    {
-      name: "city",
-      label: "City",
-      type: "text",
-      placeholder: "e.g., Addis Ababa, Adama",
-    },
-    {
-      name: "address",
-      label: "Address",
+      name: "description",
+      label: "Description",
       type: "textarea",
-      placeholder: "Street address",
-    },
-    {
-      name: "phone",
-      label: "Phone",
-      type: "text",
-      placeholder: "e.g., +251-911-123456",
-    },
-    {
-      name: "email",
-      label: "Email",
-      type: "email",
-      placeholder: "branch@company.com",
-    },
-    {
-      name: "isHeadOffice",
-      label: "Head Office",
-      type: "switch",
+      placeholder: "Optional description",
     },
     {
       name: "isActive",
@@ -344,15 +291,15 @@ export function BranchesTab() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const response = await api.get("/branches");
-      const branchesData =
-        response.data.data?.branches || response.data.branches || [];
-      setData(branchesData);
-      setBranches(branchesData);
+      const response = await api.get("/departments");
+      const deptsData =
+        response.data.data?.departments || response.data.departments || [];
+      setData(deptsData);
+      setDepartments(deptsData);
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to fetch branches",
+        description: "Failed to fetch departments",
         variant: "destructive",
       });
     } finally {
@@ -362,12 +309,12 @@ export function BranchesTab() {
 
   const fetchTreeData = async () => {
     try {
-      const response = await api.get("/branches/tree");
+      const response = await api.get("/departments/tree");
       setTreeData(response.data.data?.tree || response.data.tree || []);
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to fetch branch tree",
+        description: "Failed to fetch department tree",
         variant: "destructive",
       });
     }
@@ -383,7 +330,7 @@ export function BranchesTab() {
     setExpandedNodes(newExpanded);
   };
 
-  const renderTree = (nodes: Branch[], level = 0) => {
+  const renderTree = (nodes: Department[], level = 0) => {
     return nodes.map((node) => (
       <div key={node.id} className="select-none">
         <div
@@ -410,19 +357,14 @@ export function BranchesTab() {
             {node.code}
           </Badge>
           <span className="font-medium flex-1">{node.name}</span>
-          {node.isHeadOffice && (
-            <Badge variant="default" className="mr-2 text-xs">
-              HQ
-            </Badge>
-          )}
           <Badge variant="secondary" className="mr-2">
-            {node.branchType || "Branch"}
+            Level {node.level || "-"}
           </Badge>
           <Badge variant="outline" className="flex items-center gap-1">
             <GitBranch className="h-3 w-3" /> {node._count?.children || 0}
           </Badge>
           <Badge variant="outline" className="flex items-center gap-1">
-            <MapPin className="h-3 w-3" /> {node._count?.employees || 0}
+            <Users className="h-3 w-3" /> {node._count?.employees || 0}
           </Badge>
           <Button
             variant="ghost"
@@ -432,17 +374,10 @@ export function BranchesTab() {
               setFormValues({
                 code: node.code,
                 name: node.name,
-                level: node.level?.toString() || "1",
-                branchType: node.branchType || "",
-                region: node.region || "",
-                zone: node.zone || "",
-                district: node.district || "",
-                city: node.city || "",
-                address: node.address || "",
-                phone: node.phone || "",
-                email: node.email || "",
+                level: node.level || 1,
+                description: node.description || "",
                 parentId: node.parentId || "none",
-                isHeadOffice: node.isHeadOffice || false,
+                headOfDeptId: node.headOfDeptId || "none",
                 isActive: node.isActive,
               });
               setIsDialogOpen(true);
@@ -469,35 +404,32 @@ export function BranchesTab() {
       if (submitValues.parentId === "none") {
         submitValues.parentId = "";
       }
-
-      // Convert level back to number
-      if (submitValues.level) {
-        submitValues.level = (submitValues.level.toString() || "1") as any;
+      if (submitValues.headOfDeptId === "none") {
+        submitValues.headOfDeptId = "";
       }
 
       if (editingItem) {
-        await api.put(`/branches/${editingItem.id}`, submitValues);
-        toast({ title: "Success", description: "Branch updated successfully" });
+        await api.put(`/departments/${editingItem.id}`, submitValues);
+        toast({
+          title: "Success",
+          description: "Department updated successfully",
+        });
       } else {
-        await api.post("/branches", submitValues);
-        toast({ title: "Success", description: "Branch created successfully" });
+        await api.post("/departments", submitValues);
+        toast({
+          title: "Success",
+          description: "Department created successfully",
+        });
       }
       setIsDialogOpen(false);
       setEditingItem(null);
       setFormValues({
         code: "",
         name: "",
-        level: "1",
-        branchType: "",
-        region: "",
-        zone: "",
-        district: "",
-        city: "",
-        address: "",
-        phone: "",
-        email: "",
+        level: 1,
+        description: "",
         parentId: "none",
-        isHeadOffice: false,
+        headOfDeptId: "none",
         isActive: true,
       });
       fetchData();
@@ -515,9 +447,9 @@ export function BranchesTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Branches</h2>
+          <h2 className="text-2xl font-bold tracking-tight">Departments</h2>
           <p className="text-sm text-muted-foreground">
-            Manage geographical/regional branches and offices
+            Manage organizational departments and hierarchy
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -542,23 +474,16 @@ export function BranchesTab() {
               setFormValues({
                 code: "",
                 name: "",
-                level: "1",
-                branchType: "",
-                region: "",
-                zone: "",
-                district: "",
-                city: "",
-                address: "",
-                phone: "",
-                email: "",
+                level: 1,
+                description: "",
                 parentId: "none",
-                isHeadOffice: false,
+                headOfDeptId: "none",
                 isActive: true,
               });
               setIsDialogOpen(true);
             }}
           >
-            Add Branch
+            Add Department
           </Button>
         </div>
       </div>
@@ -573,7 +498,7 @@ export function BranchesTab() {
             fetchTreeData();
           }}
           actions={actions}
-          searchPlaceholder="Search branches..."
+          searchPlaceholder="Search departments..."
         />
       ) : (
         <div className="rounded-md border p-4 bg-card">
@@ -581,7 +506,7 @@ export function BranchesTab() {
             <div className="text-center py-8">Loading...</div>
           ) : treeData.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              No branches found
+              No departments found
             </div>
           ) : (
             renderTree(treeData)
@@ -592,11 +517,11 @@ export function BranchesTab() {
       <FormDialog
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
-        title={editingItem ? "Edit Branch" : "Add Branch"}
+        title={editingItem ? "Edit Department" : "Add Department"}
         description={
           editingItem
-            ? "Update the branch details below."
-            : "Enter the details for the new branch."
+            ? "Update the department details below."
+            : "Enter the details for the new department."
         }
         fields={formFields}
         values={formValues}

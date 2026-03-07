@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState, useEffect } from "react";
 import { type ColumnDef } from "@tanstack/react-table";
-import { Pencil, Trash2, Power, PowerOff } from "lucide-react";
+import { Pencil, Trash2, Power, PowerOff, Briefcase } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import api from "@/lib/api";
@@ -10,35 +10,47 @@ import { DataTable, type Action } from "@/components/shared/table-data";
 import { type FormField, FormDialog } from "@/components/shared/form-dialog";
 import { useToast } from "@/hooks/use-toast";
 
+interface Position {
+  id: string;
+  name: string;
+  code: string;
+  description: string | null;
+  isActive: boolean;
+  gradeId: string;
+  grade?: {
+    id: string;
+    code: string;
+    name: string;
+    level: number;
+  };
+  _count?: {
+    employees: number;
+  };
+}
+
 interface Grade {
   id: string;
   code: string;
   name: string;
   level: number;
-  description: string | null;
-  isActive: boolean;
-  _count?: {
-    salarySteps: number;
-    positions: number;
-    employees: number;
-  };
 }
 
-export function GradesTab() {
-  const [data, setData] = useState<Grade[]>([]);
+export function PositionsTab() {
+  const [data, setData] = useState<Position[]>([]);
+  const [grades, setGrades] = useState<Grade[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<Grade | null>(null);
+  const [editingItem, setEditingItem] = useState<Position | null>(null);
   const [formValues, setFormValues] = useState({
     code: "",
     name: "",
-    level: 1,
     description: "",
+    gradeId: "",
     isActive: true,
   });
   const { toast } = useToast();
 
-  const columns: ColumnDef<Grade>[] = [
+  const columns: ColumnDef<Position>[] = [
     {
       id: "code",
       header: "Code",
@@ -53,14 +65,24 @@ export function GradesTab() {
       id: "name",
       header: "Name",
       accessorFn: (row) => row.name,
-      cell: ({ row }) => row.original.name,
+      cell: ({ row }) => <div className="font-medium">{row.original.name}</div>,
     },
     {
-      id: "level",
-      header: "Level",
-      accessorFn: (row) => row.level,
+      id: "grade",
+      header: "Grade",
+      accessorFn: (row) => row.grade?.name,
       cell: ({ row }) => (
-        <Badge variant="secondary">Level {row.original.level}</Badge>
+        <Badge variant="secondary">{row.original.grade?.name || "-"}</Badge>
+      ),
+    },
+    {
+      id: "gradeLevel",
+      header: "Level",
+      accessorFn: (row) => row.grade?.level,
+      cell: ({ row }) => (
+        <span className="text-sm">
+          {row.original.grade ? `Level ${row.original.grade.level}` : "-"}
+        </span>
       ),
     },
     {
@@ -70,21 +92,14 @@ export function GradesTab() {
       cell: ({ row }) => row.original.description || "-",
     },
     {
-      id: "usage",
-      header: "Usage",
-      accessorFn: (row) => row._count?.positions || 0,
+      id: "employees",
+      header: "Employees",
+      accessorFn: (row) => row._count?.employees || 0,
       cell: ({ row }) => (
-        <div className="flex gap-1">
-          <Badge variant="outline">
-            📊 {row.original._count?.salarySteps || 0}
-          </Badge>
-          <Badge variant="outline">
-            👔 {row.original._count?.positions || 0}
-          </Badge>
-          <Badge variant="outline">
-            👥 {row.original._count?.employees || 0}
-          </Badge>
-        </div>
+        <Badge variant="outline" className="flex items-center gap-1 w-fit">
+          <Briefcase className="h-3 w-3" />{" "}
+          {row.original._count?.employees || 0}
+        </Badge>
       ),
     },
     // {
@@ -95,7 +110,7 @@ export function GradesTab() {
     // },
   ];
 
-  const actions: Action<Grade>[] = [
+  const actions: Action<Position>[] = [
     {
       label: "Edit",
       icon: <Pencil className="h-4 w-4" />,
@@ -104,8 +119,8 @@ export function GradesTab() {
         setFormValues({
           code: item.code,
           name: item.name,
-          level: item.level,
           description: item.description || "",
+          gradeId: item.gradeId,
           isActive: item.isActive,
         });
         setIsDialogOpen(true);
@@ -121,10 +136,10 @@ export function GradesTab() {
         ),
       onClick: async (item) => {
         try {
-          await api.put(`/grades/${item.id}`, { isActive: !item.isActive });
+          await api.put(`/positions/${item.id}`, { isActive: !item.isActive });
           toast({
             title: "Success",
-            description: `Grade ${item.isActive ? "deactivated" : "activated"} successfully`,
+            description: `Position ${item.isActive ? "deactivated" : "activated"} successfully`,
           });
           fetchData();
         } catch (error) {
@@ -141,12 +156,12 @@ export function GradesTab() {
       label: "Delete",
       icon: <Trash2 className="h-4 w-4" />,
       onClick: async (item) => {
-        if (!confirm("Are you sure you want to delete this grade?")) return;
+        if (!confirm("Are you sure you want to delete this position?")) return;
         try {
-          await api.delete(`/grades/${item.id}`);
+          await api.delete(`/positions/${item.id}`);
           toast({
             title: "Success",
-            description: "Grade deleted successfully",
+            description: "Position deleted successfully",
           });
           fetchData();
         } catch (error: any) {
@@ -158,9 +173,7 @@ export function GradesTab() {
         }
       },
       variant: "destructive",
-      show: (item) =>
-        (item._count?.positions || 0) === 0 &&
-        (item._count?.employees || 0) === 0,
+      show: (item) => (item._count?.employees || 0) === 0,
     },
   ];
 
@@ -169,7 +182,7 @@ export function GradesTab() {
       name: "code",
       label: "Code",
       type: "text",
-      placeholder: "e.g., GRADE1, GRADE2",
+      placeholder: "e.g., SE, HRM, FIN_ANALYST",
       required: true,
       disabled: !!editingItem,
     },
@@ -177,15 +190,19 @@ export function GradesTab() {
       name: "name",
       label: "Name",
       type: "text",
-      placeholder: "e.g., Grade 1, Grade 2",
+      placeholder: "e.g., Software Engineer, HR Manager",
       required: true,
     },
     {
-      name: "level",
-      label: "Level",
-      type: "number",
-      placeholder: "1-16",
+      name: "gradeId",
+      label: "Grade",
+      type: "select",
+      placeholder: "Select grade",
       required: true,
+      options: grades.map((g) => ({
+        value: g.id,
+        label: `${g.name} (Level ${g.level})`,
+      })),
     },
     {
       name: "description",
@@ -202,17 +219,31 @@ export function GradesTab() {
 
   useEffect(() => {
     fetchData();
+    fetchGrades();
   }, []);
 
-  const fetchData = async () => {
+  const fetchGrades = async () => {
     try {
-      setLoading(true);
       const response = await api.get("/grades");
-      setData(response.data.data?.grades || response.data.grades || []);
+      setGrades(response.data.data?.grades || response.data.grades || []);
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to fetch grades",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get("/positions");
+      setData(response.data.data?.positions || response.data.positions || []);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch positions",
         variant: "destructive",
       });
     } finally {
@@ -223,19 +254,25 @@ export function GradesTab() {
   const handleSubmit = async () => {
     try {
       if (editingItem) {
-        await api.put(`/grades/${editingItem.id}`, formValues);
-        toast({ title: "Success", description: "Grade updated successfully" });
+        await api.put(`/positions/${editingItem.id}`, formValues);
+        toast({
+          title: "Success",
+          description: "Position updated successfully",
+        });
       } else {
-        await api.post("/grades", formValues);
-        toast({ title: "Success", description: "Grade created successfully" });
+        await api.post("/positions", formValues);
+        toast({
+          title: "Success",
+          description: "Position created successfully",
+        });
       }
       setIsDialogOpen(false);
       setEditingItem(null);
       setFormValues({
         code: "",
         name: "",
-        level: 1,
         description: "",
+        gradeId: "",
         isActive: true,
       });
       fetchData();
@@ -254,32 +291,32 @@ export function GradesTab() {
         data={data}
         columns={columns}
         loading={loading}
-        title="Grades"
-        description="Manage grade levels (1-16)"
+        title="Positions"
+        description="Manage job positions and their grade assignments"
         onAdd={() => {
           setEditingItem(null);
           setFormValues({
             code: "",
             name: "",
-            level: 1,
             description: "",
+            gradeId: "",
             isActive: true,
           });
           setIsDialogOpen(true);
         }}
         onRefresh={fetchData}
         actions={actions}
-        searchPlaceholder="Search grades..."
+        searchPlaceholder="Search positions..."
       />
 
       <FormDialog
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
-        title={editingItem ? "Edit Grade" : "Add Grade"}
+        title={editingItem ? "Edit Position" : "Add Position"}
         description={
           editingItem
-            ? "Update the grade details below."
-            : "Enter the details for the new grade."
+            ? "Update the position details below."
+            : "Enter the details for the new position."
         }
         fields={formFields}
         values={formValues}
@@ -288,6 +325,7 @@ export function GradesTab() {
         }
         onSubmit={handleSubmit}
         isEditing={!!editingItem}
+        size="lg"
       />
     </>
   );

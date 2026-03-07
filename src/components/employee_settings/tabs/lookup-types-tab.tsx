@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState, useEffect } from "react";
 import { type ColumnDef } from "@tanstack/react-table";
@@ -9,36 +8,30 @@ import api from "@/lib/api";
 import { DataTable, type Action } from "@/components/shared/table-data";
 import { type FormField, FormDialog } from "@/components/shared/form-dialog";
 import { useToast } from "@/hooks/use-toast";
-
-interface Grade {
+interface LookupType {
   id: string;
   code: string;
   name: string;
-  level: number;
   description: string | null;
   isActive: boolean;
-  _count?: {
-    salarySteps: number;
-    positions: number;
-    employees: number;
-  };
+  valuesCount?: number;
+  createdAt: string;
 }
 
-export function GradesTab() {
-  const [data, setData] = useState<Grade[]>([]);
+export function LookupTypesTab() {
+  const [data, setData] = useState<LookupType[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<Grade | null>(null);
+  const [editingItem, setEditingItem] = useState<LookupType | null>(null);
   const [formValues, setFormValues] = useState({
     code: "",
     name: "",
-    level: 1,
     description: "",
     isActive: true,
   });
   const { toast } = useToast();
 
-  const columns: ColumnDef<Grade>[] = [
+  const columns: ColumnDef<LookupType>[] = [
     {
       id: "code",
       header: "Code",
@@ -56,35 +49,17 @@ export function GradesTab() {
       cell: ({ row }) => row.original.name,
     },
     {
-      id: "level",
-      header: "Level",
-      accessorFn: (row) => row.level,
-      cell: ({ row }) => (
-        <Badge variant="secondary">Level {row.original.level}</Badge>
-      ),
-    },
-    {
       id: "description",
       header: "Description",
       accessorFn: (row) => row.description,
       cell: ({ row }) => row.original.description || "-",
     },
     {
-      id: "usage",
-      header: "Usage",
-      accessorFn: (row) => row._count?.positions || 0,
+      id: "valuesCount",
+      header: "Values",
+      accessorFn: (row) => row.valuesCount || 0,
       cell: ({ row }) => (
-        <div className="flex gap-1">
-          <Badge variant="outline">
-            📊 {row.original._count?.salarySteps || 0}
-          </Badge>
-          <Badge variant="outline">
-            👔 {row.original._count?.positions || 0}
-          </Badge>
-          <Badge variant="outline">
-            👥 {row.original._count?.employees || 0}
-          </Badge>
-        </div>
+        <Badge variant="secondary">{row.original.valuesCount || 0}</Badge>
       ),
     },
     // {
@@ -95,7 +70,7 @@ export function GradesTab() {
     // },
   ];
 
-  const actions: Action<Grade>[] = [
+  const actions: Action<LookupType>[] = [
     {
       label: "Edit",
       icon: <Pencil className="h-4 w-4" />,
@@ -104,7 +79,6 @@ export function GradesTab() {
         setFormValues({
           code: item.code,
           name: item.name,
-          level: item.level,
           description: item.description || "",
           isActive: item.isActive,
         });
@@ -121,10 +95,12 @@ export function GradesTab() {
         ),
       onClick: async (item) => {
         try {
-          await api.put(`/grades/${item.id}`, { isActive: !item.isActive });
+          await api.put(`/lookups/types/${item.id}`, {
+            isActive: !item.isActive,
+          });
           toast({
             title: "Success",
-            description: `Grade ${item.isActive ? "deactivated" : "activated"} successfully`,
+            description: `Lookup type ${item.isActive ? "deactivated" : "activated"} successfully`,
           });
           fetchData();
         } catch (error) {
@@ -141,26 +117,24 @@ export function GradesTab() {
       label: "Delete",
       icon: <Trash2 className="h-4 w-4" />,
       onClick: async (item) => {
-        if (!confirm("Are you sure you want to delete this grade?")) return;
+        if (!confirm("Are you sure you want to delete this lookup type?"))
+          return;
         try {
-          await api.delete(`/grades/${item.id}`);
+          await api.delete(`/lookups/types/${item.id}`);
           toast({
             title: "Success",
-            description: "Grade deleted successfully",
+            description: "Lookup type deleted successfully",
           });
           fetchData();
-        } catch (error: any) {
+        } catch (error) {
           toast({
             title: "Error",
-            description: error.response?.data?.message || "Failed to delete",
+            description: "Failed to delete lookup type",
             variant: "destructive",
           });
         }
       },
       variant: "destructive",
-      show: (item) =>
-        (item._count?.positions || 0) === 0 &&
-        (item._count?.employees || 0) === 0,
     },
   ];
 
@@ -169,7 +143,7 @@ export function GradesTab() {
       name: "code",
       label: "Code",
       type: "text",
-      placeholder: "e.g., GRADE1, GRADE2",
+      placeholder: "e.g., GENDER, EMPLOYMENT_TYPE",
       required: true,
       disabled: !!editingItem,
     },
@@ -177,14 +151,7 @@ export function GradesTab() {
       name: "name",
       label: "Name",
       type: "text",
-      placeholder: "e.g., Grade 1, Grade 2",
-      required: true,
-    },
-    {
-      name: "level",
-      label: "Level",
-      type: "number",
-      placeholder: "1-16",
+      placeholder: "e.g., Gender, Employment Type",
       required: true,
     },
     {
@@ -207,12 +174,14 @@ export function GradesTab() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const response = await api.get("/grades");
-      setData(response.data.data?.grades || response.data.grades || []);
+      const response = await api.get("/lookups/types");
+      console.log("types", response.data.types);
+
+      setData(response.data.types);
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to fetch grades",
+        description: "Failed to fetch lookup types",
         variant: "destructive",
       });
     } finally {
@@ -223,21 +192,21 @@ export function GradesTab() {
   const handleSubmit = async () => {
     try {
       if (editingItem) {
-        await api.put(`/grades/${editingItem.id}`, formValues);
-        toast({ title: "Success", description: "Grade updated successfully" });
+        await api.put(`/lookups/types/${editingItem.id}`, formValues);
+        toast({
+          title: "Success",
+          description: "Lookup type updated successfully",
+        });
       } else {
-        await api.post("/grades", formValues);
-        toast({ title: "Success", description: "Grade created successfully" });
+        await api.post("/lookups/types", formValues);
+        toast({
+          title: "Success",
+          description: "Lookup type created successfully",
+        });
       }
       setIsDialogOpen(false);
       setEditingItem(null);
-      setFormValues({
-        code: "",
-        name: "",
-        level: 1,
-        description: "",
-        isActive: true,
-      });
+      setFormValues({ code: "", name: "", description: "", isActive: true });
       fetchData();
     } catch (error) {
       toast({
@@ -254,14 +223,13 @@ export function GradesTab() {
         data={data}
         columns={columns}
         loading={loading}
-        title="Grades"
-        description="Manage grade levels (1-16)"
+        title="Lookup Types"
+        description="Manage system lookup types for dropdowns and selections"
         onAdd={() => {
           setEditingItem(null);
           setFormValues({
             code: "",
             name: "",
-            level: 1,
             description: "",
             isActive: true,
           });
@@ -269,17 +237,17 @@ export function GradesTab() {
         }}
         onRefresh={fetchData}
         actions={actions}
-        searchPlaceholder="Search grades..."
+        searchPlaceholder="Search lookup types..."
       />
 
       <FormDialog
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
-        title={editingItem ? "Edit Grade" : "Add Grade"}
+        title={editingItem ? "Edit Lookup Type" : "Add Lookup Type"}
         description={
           editingItem
-            ? "Update the grade details below."
-            : "Enter the details for the new grade."
+            ? "Update the lookup type details below."
+            : "Enter the details for the new lookup type."
         }
         fields={formFields}
         values={formValues}

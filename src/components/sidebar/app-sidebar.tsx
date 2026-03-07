@@ -77,12 +77,18 @@ const dummyMenu = [
       },
       {
         MenuCode: 202,
+        Description: "HR Settings",
+        NavigateUrl: "/hr/settings",
+        Icon: LayoutDashboard,
+      },
+      {
+        MenuCode: 203,
         Description: "Employee Management",
         NavigateUrl: "/hr/administration",
         Icon: LayoutDashboard,
       },
       {
-        MenuCode: 203,
+        MenuCode: 204,
         Description: "Training",
         NavigateUrl: "/hr-admin/training",
         Icon: GraduationCap,
