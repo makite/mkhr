@@ -34,7 +34,7 @@ const dummyMenu = [
       {
         MenuCode: 101,
         Description: "Dashboard",
-        NavigateUrl: "/system-admin/dashboard",
+        NavigateUrl: "/dashboard",
         Icon: LayoutDashboard,
       },
       {

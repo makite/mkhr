@@ -4,8 +4,8 @@ import "./index.css";
 import { BrowserRouter, Route, Routes } from "react-router";
 import Dashboard from "./pages/dashboard-page.tsx";
 import NotFound from "./pages/not-found-page.tsx";
-import EmployeeAdmin from "./pages/employee-admin.tsx";
 import ProtectedRoute from "./auth/protected-route.tsx";
+import EmployeeAdmin from "./pages/employee-admin.tsx";
 
 const HRSettings = lazy(() => import("./pages/hr-settings-page.tsx"));
 const LoginPage = lazy(() => import("./pages/login-page.tsx"));
