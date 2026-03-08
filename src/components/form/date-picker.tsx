@@ -5,15 +5,15 @@ import {
 } from "@/components/ui/popover";
 import { useFieldContext } from "@/hooks/form-context";
 import { CalendarIcon } from "lucide-react";
-import { Button } from "../../ui/button";
-import { Calendar } from "../../ui/calendar";
+import { Button } from "../ui/button";
+import { Calendar } from "../ui/calendar";
 import {
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldLabel,
-} from "../../ui/field";
+} from "../ui/field";
 
 export default function DatePicker({
   placeHolder,
@@ -50,7 +50,7 @@ export default function DatePicker({
               defaultMonth={field.state.value ?? new Date()}
               captionLayout="dropdown"
               onSelect={(date) => {
-                field.handleChange(date);
+                field.handleChange(date!);
               }}
             />
           </PopoverContent>

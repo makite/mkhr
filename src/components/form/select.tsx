@@ -15,7 +15,7 @@ import {
   FieldDescription,
   FieldError,
   FieldLabel,
-} from "../../ui/field";
+} from "../ui/field";
 
 export default function SelectEl({
   selectItems,

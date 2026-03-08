@@ -2,13 +2,13 @@ import { StrictMode, lazy } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import { BrowserRouter, Route, Routes } from "react-router";
-import Dashboard from "./pages/dashboard-page.tsx";
+import Dashboard from "./modules/hr/dashboard/page.tsx";
 import NotFound from "./pages/not-found-page.tsx";
 import ProtectedRoute from "./auth/protected-route.tsx";
-import EmployeeAdmin from "./pages/employee-admin.tsx";
-import Employees from "./pages/employees.tsx";
+import EmployeeAdmin from "./modules/hr/employees/components/employee-admin.tsx";
+import Employees from "./modules/hr/employees/page.tsx";
 
-const HRSettings = lazy(() => import("./pages/hr-settings-page.tsx"));
+const HRSettings = lazy(() => import("./modules/hr/settings/page.tsx"));
 const LoginPage = lazy(() => import("./pages/login-page.tsx"));
 const DashboardLayout = lazy(() => import("./layouts/dashboard-layout.tsx"));
 

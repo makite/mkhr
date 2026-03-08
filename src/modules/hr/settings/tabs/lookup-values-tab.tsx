@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState, useEffect } from "react";
-import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
+import { type ColumnDef } from "@tanstack/react-table";
 import { Pencil, Trash2, Power, PowerOff } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -28,8 +28,6 @@ interface LookupType {
   code: string;
   name: string;
 }
-
-const columnHelper = createColumnHelper<LookupValue>();
 
 export function LookupValuesTab() {
   const [data, setData] = useState<LookupValue[]>([]);

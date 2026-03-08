@@ -52,8 +52,8 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 import type { UseFormReturn } from "react-hook-form";
-import type { BasicInfoValues } from "@/schema/employeeSchema";
-import type { EmployeeLookupData } from "@/components/employee_admin/types/employee.type";
+import type { BasicInfoValues } from "@/modules/hr/employees/schema/employeeSchema";
+import type { EmployeeLookupData } from "@/modules/hr/employees/types/employee.type";
 import {
   useAccordionItem,
   AccordionItem,

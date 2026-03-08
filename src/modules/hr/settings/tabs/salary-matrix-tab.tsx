@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from "react";
-import { type ColumnDef } from "@tanstack/react-table";
 import { Pencil, Save, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -34,7 +33,7 @@ interface Grade {
 export function SalaryMatrixTab() {
   const [matrixData, setMatrixData] = useState<SalaryMatrixRow[]>([]);
   const [scales, setScales] = useState<Scale[]>([]);
-  const [grades, setGrades] = useState<Grade[]>([]);
+  const [, setGrades] = useState<Grade[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingCell, setEditingCell] = useState<{
     gradeId: string;
@@ -42,77 +41,6 @@ export function SalaryMatrixTab() {
   } | null>(null);
   const [editValue, setEditValue] = useState("");
   const { toast } = useToast();
-
-  const columns: ColumnDef<SalaryMatrixRow>[] = [
-    {
-      id: "gradeCode",
-      header: "Grade",
-      accessorFn: (row) => row.gradeCode,
-      cell: ({ row }) => (
-        <div>
-          <Badge variant="outline" className="font-mono mr-2">
-            {row.original.gradeCode}
-          </Badge>
-          <span className="text-sm">{row.original.gradeName}</span>
-        </div>
-      ),
-    },
-    ...scales.map((scale) => ({
-      id: scale.id,
-      header: scale.name,
-      accessorFn: (row: any) => row[scale.id],
-      cell: ({ row }: { row: any }) => {
-        const isEditing =
-          editingCell?.gradeId === row.original.gradeId &&
-          editingCell?.scaleId === scale.id;
-        const value = row.original[scale.id];
-
-        if (isEditing) {
-          return (
-            <div className="flex items-center gap-1">
-              <Input
-                type="number"
-                value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
-                className="w-20 h-8"
-                autoFocus
-              />
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-8 w-8 p-0"
-                onClick={() => saveEdit(row.original.gradeId, scale.id)}
-              >
-                <Save className="h-3 w-3" />
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-8 w-8 p-0"
-                onClick={() => setEditingCell(null)}
-              >
-                <X className="h-3 w-3" />
-              </Button>
-            </div>
-          );
-        }
-
-        return (
-          <div className="flex items-center justify-between">
-            <span>{value !== undefined ? value.toLocaleString() : "-"}</span>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
-              onClick={() => startEdit(row.original.gradeId, scale.id, value)}
-            >
-              <Pencil className="h-3 w-3" />
-            </Button>
-          </div>
-        );
-      },
-    })),
-  ];
 
   useEffect(() => {
     fetchData();

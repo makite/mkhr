@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import api from "@/lib/api";
-import type { BasicInfoValues } from "@/schema/employeeSchema";
+import type { BasicInfoValues } from "@/modules/hr/employees/schema/employeeSchema";
 
 import { format } from "date-fns";
 

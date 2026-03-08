@@ -10,14 +10,17 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import api from "@/lib/api";
-import { useEmployeeData } from "@/components/employee_admin/services/useEmployeeData";
-import { BasicInfoTab } from "@/components/employee_admin/tab/basic_info-tab";
-import { DocumentTab } from "@/components/employee_admin/tab/document-tab";
-import { EducationTab } from "@/components/employee_admin/tab/education-tab";
-import { ExperienceTab } from "@/components/employee_admin/tab/experience-tab";
-import { LanguageTab } from "@/components/employee_admin/tab/langauge-tab";
-import { EmployeePreview } from "@/components/form/employeePreview";
-import { type BasicInfoValues, basicInfoSchema } from "@/schema/employeeSchema";
+import { useEmployeeData } from "@/modules/hr/employees/services/useEmployeeData";
+import { BasicInfoTab } from "@/modules/hr/employees/tabs/basic_info-tab";
+import { DocumentTab } from "@/modules/hr/employees/tabs/document-tab";
+import { EducationTab } from "@/modules/hr/employees/tabs/education-tab";
+import { ExperienceTab } from "@/modules/hr/employees/tabs/experience-tab";
+import { LanguageTab } from "@/modules/hr/employees/tabs/langauge-tab";
+import { EmployeePreview } from "@/modules/hr/employees/components/employeePreview";
+import {
+  type BasicInfoValues,
+  basicInfoSchema,
+} from "@/modules/hr/employees/schema/employeeSchema";
 
 export default function NewEmployeePage() {
   const navigate = useNavigate();

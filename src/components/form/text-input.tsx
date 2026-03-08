@@ -1,11 +1,6 @@
 import { useFieldContext } from "@/hooks/form-context";
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldLabel,
-} from "../../ui/field";
-import { Input } from "../../ui/input";
+import { Field, FieldDescription, FieldError, FieldLabel } from "../ui/field";
+import { Input } from "../ui/input";
 
 export default function TextInput({
   placeholder,

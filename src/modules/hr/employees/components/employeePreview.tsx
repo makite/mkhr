@@ -2,10 +2,10 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import type { BasicInfoValues } from "@/schema/employeeSchema";
+import type { BasicInfoValues } from "@/modules/hr/employees/schema/employeeSchema";
 import { AlertCircle } from "lucide-react";
 import type { UseFormReturn } from "react-hook-form";
-import type { EmployeeLookupData } from "../employee_admin/types/employee.type";
+import type { EmployeeLookupData } from "../types/employee.type";
 
 interface EmployeePreviewProps {
   form: UseFormReturn<BasicInfoValues>;
