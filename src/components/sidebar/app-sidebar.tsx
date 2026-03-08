@@ -84,7 +84,7 @@ const dummyMenu = [
       {
         MenuCode: 203,
         Description: "Employee Management",
-        NavigateUrl: "/hr/administration",
+        NavigateUrl: "/employees",
         Icon: LayoutDashboard,
       },
       {

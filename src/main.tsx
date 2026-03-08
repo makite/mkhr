@@ -6,6 +6,7 @@ import Dashboard from "./pages/dashboard-page.tsx";
 import NotFound from "./pages/not-found-page.tsx";
 import ProtectedRoute from "./auth/protected-route.tsx";
 import EmployeeAdmin from "./pages/employee-admin.tsx";
+import Employees from "./pages/employees.tsx";
 
 const HRSettings = lazy(() => import("./pages/hr-settings-page.tsx"));
 const LoginPage = lazy(() => import("./pages/login-page.tsx"));
@@ -30,6 +31,7 @@ createRoot(document.getElementById("root")!).render(
           }
         >
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/employees" element={<Employees />} />
           <Route path="/hr">
             <Route path="settings" element={<HRSettings />} />
             <Route path="administration" element={<EmployeeAdmin />} />
