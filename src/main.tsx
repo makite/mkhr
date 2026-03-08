@@ -9,6 +9,7 @@ import EmployeeAdmin from "./modules/hr/employees/components/employee-admin.tsx"
 import Employees from "./modules/hr/employees/page.tsx";
 import UsersPage from "./modules/system-admin/users/page.tsx";
 import RolesPage from "./modules/system-admin/role/page.tsx";
+import { Toaster } from "sonner";
 
 const HRSettings = lazy(() => import("./modules/hr/settings/page.tsx"));
 const LoginPage = lazy(() => import("./pages/login-page.tsx"));
@@ -17,6 +18,7 @@ const DashboardLayout = lazy(() => import("./layouts/dashboard-layout.tsx"));
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <BrowserRouter>
+      <Toaster />
       <Routes>
         {/* Public routes */}
         <Route path="/" element={<LoginPage />} />
