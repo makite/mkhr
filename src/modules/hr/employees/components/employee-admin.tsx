@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate, useParams, useSearchParams } from "react-router";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
@@ -34,6 +34,7 @@ interface Employee extends BasicInfoValues {
 export default function EmployeeFormPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const isEditMode = !!id;
   const [formVersion, setFormVersion] = useState(0);
@@ -50,7 +51,9 @@ export default function EmployeeFormPage() {
   const [loading, setLoading] = useState(isEditMode);
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState("basic");
+  const [activeTab, setActiveTab] = useState(
+    searchParams.get("tab") || "basic",
+  );
   const [completionProgress, setCompletionProgress] = useState(0);
   const [employeeId, setEmployeeId] = useState<string | null>(id || null);
   const [employeeData, setEmployeeData] = useState<Employee | null>(null);
@@ -105,6 +108,14 @@ export default function EmployeeFormPage() {
       fetchEmployeeData(id);
     }
   }, [id, isEditMode]);
+
+  // Re-filter positions/scales once lookupData is ready (important for edit mode)
+  useEffect(() => {
+    if (!dataLoading && selectedGradeId) {
+      updateFilteredPositions(selectedGradeId);
+      updateFilteredScales(selectedGradeId);
+    }
+  }, [dataLoading]);
 
   const fetchEmployeeData = async (employeeId: string) => {
     setLoading(true);
@@ -192,35 +203,45 @@ export default function EmployeeFormPage() {
     }
   }, [selectedGradeId, updateFilteredPositions, updateFilteredScales]);
 
-  // Calculate completion progress
+  // Calculate completion progress via subscription (avoids infinite re-render)
   useEffect(() => {
-    const values = form.getValues();
-    let completed = 0;
-    const total = 20;
+    const calcProgress = (values: BasicInfoValues) => {
+      let completed = 0;
+      const total = 20;
 
-    if (values.firstName) completed++;
-    if (values.lastName) completed++;
-    if (values.email) completed++;
-    if (values.phone) completed++;
-    if (values.genderId) completed++;
-    if (values.nationality) completed++;
-    if (values.maritalStatus) completed++;
-    if (values.dateOfBirthGrg) completed++;
-    if (values.employmentTypeId) completed++;
-    if (values.departmentId) completed++;
-    if (values.positionId) completed++;
-    if (values.gradeId) completed++;
-    if (values.scaleId) completed++;
-    if (values.branchId) completed++;
-    if (values.supervisorId) completed++;
-    if (values.basicSalary) completed++;
-    if (values.tin) completed++;
-    if (values.pensionPfNumber) completed++;
-    if (values.bankAccount) completed++;
-    if (values.yearsOfExperience) completed++;
+      if (values.firstName) completed++;
+      if (values.lastName) completed++;
+      if (values.email) completed++;
+      if (values.phone) completed++;
+      if (values.genderId) completed++;
+      if (values.nationality) completed++;
+      if (values.maritalStatus) completed++;
+      if (values.dateOfBirthGrg) completed++;
+      if (values.employmentTypeId) completed++;
+      if (values.departmentId) completed++;
+      if (values.positionId) completed++;
+      if (values.gradeId) completed++;
+      if (values.scaleId) completed++;
+      if (values.branchId) completed++;
+      if (values.supervisorId) completed++;
+      if (values.basicSalary) completed++;
+      if (values.tin) completed++;
+      if (values.pensionPfNumber) completed++;
+      if (values.bankAccount) completed++;
+      if (values.yearsOfExperience) completed++;
 
-    setCompletionProgress(Math.round((completed / total) * 100));
-  }, [form.watch()]);
+      setCompletionProgress(Math.round((completed / total) * 100));
+    };
+
+    // Calculate once on mount / form reset
+    calcProgress(form.getValues());
+
+    // Then subscribe to future changes
+    const subscription = form.watch((values) => {
+      calcProgress(values as BasicInfoValues);
+    });
+    return () => subscription.unsubscribe();
+  }, [form]);
 
   // Save basic info (Create or Update)
   const saveBasicInfo = async (data: BasicInfoValues) => {

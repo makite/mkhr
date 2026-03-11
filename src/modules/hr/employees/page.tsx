@@ -15,6 +15,7 @@ import {
   Ban,
   CheckCheck,
   AlertCircle,
+  FilePlus2,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -237,6 +238,13 @@ export default function EmployeesPage() {
       onClick: (item) => navigate(`/employees/${item.id}/edit`),
       show: (item) =>
         item.requestStatus === "DRAFT" || item.requestStatus === "PENDING",
+    },
+    {
+      label: "Add Additional Info",
+      icon: <FilePlus2 className="h-4 w-4" />,
+      onClick: (item) =>
+        navigate(`/employees/${item.id}/edit?tab=experience`),
+      show: (item) => item.requestStatus === "APPROVED",
     },
     {
       label: "Approve",
