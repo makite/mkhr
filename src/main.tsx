@@ -40,6 +40,7 @@ createRoot(document.getElementById("root")!).render(
           <Route path="/roles" element={<RolesPage />} />
           <Route path="/employees" element={<Employees />} />
           <Route path="/employees/:id" element={<EmployeeDetailPage />} />
+          <Route path="/employees/:id/edit" element={<EmployeeAdmin />} />
           <Route path="/hr">
             <Route path="settings" element={<HRSettings />} />
             <Route path="administration" element={<EmployeeAdmin />} />
