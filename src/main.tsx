@@ -10,6 +10,7 @@ import Employees from "./modules/hr/employees/page.tsx";
 import UsersPage from "./modules/system-admin/users/page.tsx";
 import RolesPage from "./modules/system-admin/role/page.tsx";
 import { Toaster } from "sonner";
+import EmployeeDetailPage from "./modules/hr/employees/components/employee-detail-page.tsx";
 
 const HRSettings = lazy(() => import("./modules/hr/settings/page.tsx"));
 const LoginPage = lazy(() => import("./pages/login-page.tsx"));
@@ -38,6 +39,7 @@ createRoot(document.getElementById("root")!).render(
           <Route path="/users" element={<UsersPage />} />
           <Route path="/roles" element={<RolesPage />} />
           <Route path="/employees" element={<Employees />} />
+          <Route path="/employees/:id" element={<EmployeeDetailPage />} />
           <Route path="/hr">
             <Route path="settings" element={<HRSettings />} />
             <Route path="administration" element={<EmployeeAdmin />} />

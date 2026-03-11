@@ -41,31 +41,47 @@ interface Employee {
   firstName: string;
   lastName: string;
   fullNameAm?: string;
-  email?: string;
-  phone?: string;
-  gender?: { value: string };
-  position?: { name: string };
-  department?: { name: string };
-  branch?: { name: string };
-  grade?: { name: string; level: number };
   requestStatus: "DRAFT" | "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
   createdAt: string;
   updatedAt: string;
-  createdBy?: string;
-  approvedBy?: string;
-  approvedAt?: string;
+  positionRef?: {
+    id: string;
+    name: string;
+    code: string;
+  };
+  grade?: {
+    id: string;
+    name: string;
+    level: number;
+  };
+  scale?: {
+    id: string;
+    name: string;
+    stepNumber: number;
+  };
+  branch?: {
+    id: string;
+    name: string;
+    code: string;
+  };
+  department?: {
+    id: string;
+    name: string;
+    code: string;
+  };
 }
 
-interface EmployeeResponse {
-  data: {
-    employees: Employee[];
-    pagination: {
-      page: number;
-      limit: number;
-      total: number;
-      pages: number;
-    };
+interface ApiResponse {
+  success: boolean;
+  message: string;
+  data: Employee[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
   };
+  timestamp: string;
 }
 
 const getStatusBadge = (status: string) => {
@@ -118,7 +134,7 @@ export default function EmployeesPage() {
     pages: 0,
   });
   const [filters, setFilters] = useState({
-    status: "all", // Changed from "" to "all"
+    status: "all",
     search: "",
     department: "",
   });
@@ -150,10 +166,10 @@ export default function EmployeesPage() {
     {
       id: "position",
       header: "Position",
-      accessorFn: (row) => row.position?.name,
+      accessorFn: (row) => row.positionRef?.name,
       cell: ({ row }) => (
         <div className="flex flex-col">
-          <span>{row.original.position?.name || "-"}</span>
+          <span>{row.original.positionRef?.name || "-"}</span>
           {row.original.grade && (
             <span className="text-xs text-muted-foreground">
               {row.original.grade.name} (Level {row.original.grade.level})
@@ -163,36 +179,10 @@ export default function EmployeesPage() {
       ),
     },
     {
-      id: "department",
-      header: "Department",
-      accessorFn: (row) => row.department?.name,
-      cell: ({ row }) => (
-        <div className="flex flex-col">
-          <span>{row.original.department?.name || "-"}</span>
-          {row.original.branch && (
-            <span className="text-xs text-muted-foreground">
-              {row.original.branch.name}
-            </span>
-          )}
-        </div>
-      ),
-    },
-    {
-      id: "contact",
-      header: "Contact",
-      accessorFn: (row) => row.email,
-      cell: ({ row }) => (
-        <div className="flex flex-col">
-          {row.original.email && (
-            <span className="text-sm">{row.original.email}</span>
-          )}
-          {row.original.phone && (
-            <span className="text-xs text-muted-foreground">
-              {row.original.phone}
-            </span>
-          )}
-        </div>
-      ),
+      id: "branch",
+      header: "Branch",
+      accessorFn: (row) => row.branch?.name,
+      cell: ({ row }) => <span>{row.original.branch?.name || "-"}</span>,
     },
     {
       id: "status",
@@ -294,17 +284,17 @@ export default function EmployeesPage() {
       const params = new URLSearchParams({
         page: pagination.page.toString(),
         limit: pagination.limit.toString(),
-        ...(filters.status !== "all" && { status: filters.status }), // Only add if not "all"
+        ...(filters.status !== "all" && { status: filters.status }),
         ...(filters.search && { search: filters.search }),
         ...(filters.department && { departmentId: filters.department }),
       });
 
-      const response: EmployeeResponse = await api.get(`/employees?${params}`);
-      setData(response.data.employees || []);
+      const response: ApiResponse = await api.get(`/employees?${params}`);
+      setData(response.data || []);
       setPagination((prev) => ({
         ...prev,
-        total: response.data.pagination?.total || 0,
-        pages: response.data.pagination?.pages || 0,
+        total: response.pagination?.total || 0,
+        pages: response.pagination?.pages || 0,
       }));
     } catch (error) {
       toast({
@@ -376,7 +366,6 @@ export default function EmployeesPage() {
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
               <SelectContent>
-                {/* Use "all" instead of empty string */}
                 <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="DRAFT">Draft</SelectItem>
                 <SelectItem value="PENDING">Pending</SelectItem>

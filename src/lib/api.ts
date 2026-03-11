@@ -1,4 +1,5 @@
 import axios from "axios";
+import { toast } from "sonner";
 
 let navigateFunction: ((path: string) => void) | null = null;
 
@@ -38,7 +39,7 @@ api.interceptors.response.use(
     if (status === 401 || status === 403) {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
-
+      toast.error("session out! please login again");
       if (navigateFunction) {
         navigateFunction("/");
       } else {
