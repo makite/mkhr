@@ -210,11 +210,26 @@ export default function EmployeesPage() {
     },
   ];
 
-  const actions: Action<Employee>[] = [
+  // Persist a rotation context so the detail page can navigate prev/next within the current list
+  const openDetailWithRotation = (selected: Employee, list: Employee[]) => {
+    try {
+      const ids = list.map((e) => e.id);
+      const index = Math.max(0, ids.indexOf(selected.id));
+      sessionStorage.setItem(
+        "employeeRotation",
+        JSON.stringify({ ids, index, ts: Date.now() }),
+      );
+    } catch {
+      // ignore storage errors
+    }
+    navigate(`/employees/${selected.id}`);
+  };
+
+  const createActions = (list: Employee[]): Action<Employee>[] => [
     {
       label: "View Details",
       icon: <Eye className="h-4 w-4" />,
-      onClick: (item) => navigate(`/employees/${item.id}`),
+      onClick: (item) => openDetailWithRotation(item, list),
     },
     {
       label: "Edit",
@@ -238,7 +253,8 @@ export default function EmployeesPage() {
           } catch (error: any) {
             toast({
               title: "Error",
-              description: error.response?.data?.message || "Failed to approve",
+              description:
+                error.response?.data?.message || "Failed to approve",
               variant: "destructive",
             });
           }
@@ -263,7 +279,8 @@ export default function EmployeesPage() {
           } catch (error: any) {
             toast({
               title: "Error",
-              description: error.response?.data?.message || "Failed to reject",
+              description:
+                error.response?.data?.message || "Failed to reject",
               variant: "destructive",
             });
           }
@@ -444,13 +461,13 @@ export default function EmployeesPage() {
             data={data}
             columns={columns}
             loading={loading}
-            actions={actions}
+            actions={createActions(data)}
             onRefresh={fetchData}
             searchPlaceholder="Search employees..."
             showPagination={true}
             pageSize={pagination.limit}
             pageSizeOptions={[10, 20, 30, 50]}
-            onRowClick={(item) => navigate(`/employees/${item.id}`)}
+            onRowClick={(item) => openDetailWithRotation(item, data)}
           />
         </TabsContent>
 
@@ -459,11 +476,19 @@ export default function EmployeesPage() {
             data={data.filter((e) => e.requestStatus === "PENDING")}
             columns={columns}
             loading={loading}
-            actions={actions}
+            actions={createActions(
+              data.filter((e) => e.requestStatus === "PENDING"),
+            )}
             onRefresh={fetchData}
             searchPlaceholder="Search pending employees..."
             showPagination={true}
             pageSize={pagination.limit}
+            onRowClick={(item) =>
+              openDetailWithRotation(
+                item,
+                data.filter((e) => e.requestStatus === "PENDING"),
+              )
+            }
           />
         </TabsContent>
 
@@ -472,13 +497,19 @@ export default function EmployeesPage() {
             data={data.filter((e) => e.requestStatus === "APPROVED")}
             columns={columns}
             loading={loading}
-            actions={actions.filter(
-              (a) => a.label !== "Approve" && a.label !== "Reject",
-            )}
+            actions={createActions(
+              data.filter((e) => e.requestStatus === "APPROVED"),
+            ).filter((a) => a.label !== "Approve" && a.label !== "Reject")}
             onRefresh={fetchData}
             searchPlaceholder="Search approved employees..."
             showPagination={true}
             pageSize={pagination.limit}
+            onRowClick={(item) =>
+              openDetailWithRotation(
+                item,
+                data.filter((e) => e.requestStatus === "APPROVED"),
+              )
+            }
           />
         </TabsContent>
 
@@ -487,11 +518,19 @@ export default function EmployeesPage() {
             data={data.filter((e) => e.requestStatus === "DRAFT")}
             columns={columns}
             loading={loading}
-            actions={actions}
+            actions={createActions(
+              data.filter((e) => e.requestStatus === "DRAFT"),
+            )}
             onRefresh={fetchData}
             searchPlaceholder="Search drafts..."
             showPagination={true}
             pageSize={pagination.limit}
+            onRowClick={(item) =>
+              openDetailWithRotation(
+                item,
+                data.filter((e) => e.requestStatus === "DRAFT"),
+              )
+            }
           />
         </TabsContent>
       </Tabs>

@@ -110,9 +110,10 @@ export default function EmployeeFormPage() {
     setLoading(true);
     try {
       const response = await api.get(`/employees/${employeeId}`);
-      console.log("API Response:", response.data);
+      console.log("API Response:", response);
 
-      const employee = response.data.data?.employee || response.data;
+      // Response can be either { data: { employee } } or { employee } or the employee itself.
+      const employee = response?.data?.employee ?? response?.data ?? response;
       console.log("Employee data:", employee);
 
       setEmployeeData(employee);

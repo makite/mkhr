@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router";
@@ -18,6 +19,9 @@ import {
   CreditCard,
   User,
   FileText,
+  ChevronLeft,
+  ChevronRight,
+  MoreHorizontal,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -29,6 +33,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import api from "@/lib/api";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { FormDialog } from "@/components/shared/form-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ro } from "date-fns/locale";
 
 interface Employee {
   id: string;
@@ -63,6 +77,7 @@ interface Employee {
   tin?: string;
   pensionPfNumber?: string;
   bankAccount?: string;
+  isActive?: boolean;
   yearsOfExperience?: number;
   relevantExperience?: boolean;
   requestStatus: "DRAFT" | "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
@@ -150,11 +165,126 @@ export default function EmployeeDetailPage() {
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Rotation context and auto-advance
+  const [rotation, setRotation] = useState<{
+    ids: string[];
+    index: number;
+  } | null>(null);
+  const [autoAdvance, setAutoAdvance] = useState<boolean>(() => {
+    try {
+      return (
+        (sessionStorage.getItem("employeeRotation:autoAdvance") ?? "true") ===
+        "true"
+      );
+    } catch {
+      return true;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      const ctx = JSON.parse(
+        sessionStorage.getItem("employeeRotation") || "null",
+      );
+      if (ctx && Array.isArray(ctx.ids)) {
+        setRotation({ ids: ctx.ids, index: Math.max(0, ctx.index || 0) });
+      }
+    } catch (error) {
+      // Optionally handle error
+    }
+  }, []);
+
+  useEffect(() => {
+    if (rotation && id) {
+      const idx = rotation.ids.indexOf(id);
+      if (idx >= 0 && idx !== rotation.index) {
+        setRotation({ ...rotation, index: idx });
+      }
+    }
+  }, [id]);
+
+  const gotoIndex = (idx: number) => {
+    if (!rotation || rotation.ids.length === 0) return;
+    const len = rotation.ids.length;
+    const nextIdx = ((idx % len) + len) % len;
+    const nextId = rotation.ids[nextIdx];
+    navigate(`/employees/${nextId}`);
+  };
+
+  const gotoPrev = () => gotoIndex((rotation?.index ?? 0) - 1);
+  const gotoNext = () => gotoIndex((rotation?.index ?? 0) + 1);
+
+  const setAutoAdvancePersist = (val: boolean) => {
+    setAutoAdvance(val);
+    try {
+      sessionStorage.setItem(
+        "employeeRotation:autoAdvance",
+        val ? "true" : "false",
+      );
+    } catch (error) {
+      // Optionally handle error
+    }
+  };
+
+  // Permission helpers (role-based)
+  const getUserRoles = (): string[] => {
+    try {
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      const roles = Array.isArray(user.roles)
+        ? user.roles
+        : user.role
+          ? [user.role]
+          : [];
+      return roles.filter(Boolean);
+    } catch {
+      return [];
+    }
+  };
+  // For now, enable all actions (Super Admin mode). Replace with real permission checks later.
+  const roles = getUserRoles();
+  console.log("Role:", roles);
+
+  const canApprove = true;
+  const canEditApproved = true;
+  const canPromote = true;
+  const canIncrement = true;
+  const canTerminate = true;
+  const canReinstate = true;
+  // Operation dialog state
+  const [promoteOpen, setPromoteOpen] = useState(false);
+  const [promoteValues, setPromoteValues] = useState({
+    positionId: "",
+    gradeId: "",
+    scaleId: "",
+    effectiveDate: "",
+    note: "",
+  });
+
+  const [incrementOpen, setIncrementOpen] = useState(false);
+  const [incrementValues, setIncrementValues] = useState({
+    newBasicSalary: "",
+    effectiveDate: "",
+    reason: "",
+  });
+
+  const [terminateOpen, setTerminateOpen] = useState(false);
+  const [terminateValues, setTerminateValues] = useState({
+    reason: "",
+    effectiveDate: "",
+  });
+
+  const [reinstateOpen, setReinstateOpen] = useState(false);
+  const [reinstateValues, setReinstateValues] = useState({
+    effectiveDate: "",
+  });
+
   useEffect(() => {
     if (id) {
       fetchEmployee();
     }
   }, [id]);
+
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
   const fetchEmployee = async () => {
     setLoading(true);
@@ -184,12 +314,23 @@ export default function EmployeeDetailPage() {
     )
       return;
     try {
-      await api.put(`/employees/${id}/approve`, {});
-      toast({
-        title: "Success",
-        description: "Employee approved successfully",
-      });
-      fetchEmployee();
+      // DUMMY: simulate approve success
+      await sleep(400);
+      setEmployee((prev) =>
+        prev
+          ? {
+              ...prev,
+              requestStatus: "APPROVED",
+              approvedAt: new Date().toISOString(),
+            }
+          : prev,
+      );
+      toast({ title: "Success", description: "Employee approved (dummy)" });
+      if (autoAdvance) {
+        gotoNext();
+      } else {
+        fetchEmployee();
+      }
     } catch (error: any) {
       toast({
         title: "Error",
@@ -203,9 +344,24 @@ export default function EmployeeDetailPage() {
     const reason = prompt("Please enter rejection reason:");
     if (!reason) return;
     try {
-      await api.put(`/employees/${id}/reject`, { reason });
-      toast({ title: "Success", description: "Employee rejected" });
-      fetchEmployee();
+      // DUMMY: simulate reject success
+      await sleep(400);
+      setEmployee((prev) =>
+        prev
+          ? {
+              ...prev,
+              requestStatus: "REJECTED",
+              rejectedAt: new Date().toISOString(),
+              rejectionReason: reason,
+            }
+          : prev,
+      );
+      toast({ title: "Success", description: "Employee rejected (dummy)" });
+      if (autoAdvance) {
+        gotoNext();
+      } else {
+        fetchEmployee();
+      }
     } catch (error: any) {
       toast({
         title: "Error",
@@ -268,15 +424,54 @@ export default function EmployeeDetailPage() {
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          {/* Rotation controls */}
+          {rotation && rotation.ids.length > 1 && (
+            <div className="flex items-center gap-1 mr-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={gotoPrev}
+                title="Previous (rotate)"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={gotoNext}
+                title="Next (rotate)"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              <div className="flex items-center gap-2 ml-2">
+                <Checkbox
+                  id="auto-advance"
+                  checked={autoAdvance}
+                  onCheckedChange={(v) => setAutoAdvancePersist(!!v)}
+                />
+                <label
+                  htmlFor="auto-advance"
+                  className="text-xs text-muted-foreground"
+                >
+                  Auto-advance
+                </label>
+              </div>
+            </div>
+          )}
+
+          {/* Edit button */}
           {(employee.requestStatus === "DRAFT" ||
-            employee.requestStatus === "PENDING") && (
+            employee.requestStatus === "PENDING" ||
+            (employee.requestStatus === "APPROVED" && canEditApproved)) && (
             <Button onClick={handleEdit}>
               <Edit className="mr-2 h-4 w-4" />
               Edit
             </Button>
           )}
-          {employee.requestStatus === "PENDING" && (
+
+          {/* Approvals */}
+          {employee.requestStatus === "PENDING" && canApprove && (
             <>
               <Button variant="default" onClick={handleApprove}>
                 <CheckCircle className="mr-2 h-4 w-4" />
@@ -288,6 +483,39 @@ export default function EmployeeDetailPage() {
               </Button>
             </>
           )}
+
+          {/* More actions */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                Actions
+                <MoreHorizontal className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Employee Actions</DropdownMenuLabel>
+              {employee.requestStatus === "APPROVED" && canPromote && (
+                <DropdownMenuItem onClick={() => setPromoteOpen(true)}>
+                  Promote
+                </DropdownMenuItem>
+              )}
+              {employee.requestStatus === "APPROVED" && canIncrement && (
+                <DropdownMenuItem onClick={() => setIncrementOpen(true)}>
+                  Salary Increment
+                </DropdownMenuItem>
+              )}
+              {(employee as any).isActive !== false && canTerminate && (
+                <DropdownMenuItem onClick={() => setTerminateOpen(true)}>
+                  Terminate
+                </DropdownMenuItem>
+              )}
+              {(employee as any).isActive === false && canReinstate && (
+                <DropdownMenuItem onClick={() => setReinstateOpen(true)}>
+                  Reinstate
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -734,6 +962,204 @@ export default function EmployeeDetailPage() {
           </Tabs>
         </div>
       </div>
+
+      {/* Operation Dialogs */}
+      <FormDialog
+        open={incrementOpen}
+        onOpenChange={setIncrementOpen}
+        title="Salary Increment"
+        description="Update the employee's base salary"
+        fields={[
+          {
+            name: "newBasicSalary",
+            label: "New Basic Salary",
+            type: "number",
+            required: true,
+          },
+          {
+            name: "effectiveDate",
+            label: "Effective Date",
+            type: "date",
+            required: true,
+          },
+          { name: "reason", label: "Reason", type: "textarea" },
+        ]}
+        values={incrementValues}
+        onChange={(n, v) => setIncrementValues((p) => ({ ...p, [n]: v }))}
+        onSubmit={async () => {
+          try {
+            // DUMMY: simulate salary increment
+            await sleep(400);
+            setEmployee((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    basicSalary:
+                      Number(incrementValues.newBasicSalary) ||
+                      prev.basicSalary,
+                  }
+                : prev,
+            );
+            toast({ title: "Success", description: "Salary updated (dummy)" });
+            setIncrementOpen(false);
+            if (autoAdvance) gotoNext();
+            else fetchEmployee();
+          } catch (error: any) {
+            toast({
+              title: "Error",
+              description:
+                error.response?.data?.message || "Failed to update salary",
+              variant: "destructive",
+            });
+          }
+        }}
+        submitLabel="Apply"
+      />
+
+      <FormDialog
+        open={terminateOpen}
+        onOpenChange={setTerminateOpen}
+        title="Terminate Employment"
+        description="Terminate this employee"
+        fields={[
+          {
+            name: "effectiveDate",
+            label: "Effective Date",
+            type: "date",
+            required: true,
+          },
+          { name: "reason", label: "Reason", type: "textarea" },
+        ]}
+        values={terminateValues}
+        onChange={(n, v) => setTerminateValues((p) => ({ ...p, [n]: v }))}
+        onSubmit={async () => {
+          try {
+            // DUMMY: simulate terminate
+            await sleep(400);
+            setEmployee((prev) => (prev ? { ...prev, isActive: false } : prev));
+            toast({
+              title: "Success",
+              description: "Employee terminated (dummy)",
+            });
+            setTerminateOpen(false);
+            if (autoAdvance) gotoNext();
+            else fetchEmployee();
+          } catch (error: any) {
+            toast({
+              title: "Error",
+              description:
+                error.response?.data?.message || "Failed to terminate",
+              variant: "destructive",
+            });
+          }
+        }}
+        submitLabel="Terminate"
+      />
+
+      <FormDialog
+        open={reinstateOpen}
+        onOpenChange={setReinstateOpen}
+        title="Reinstate Employment"
+        description="Reinstate this employee"
+        fields={[
+          {
+            name: "effectiveDate",
+            label: "Effective Date",
+            type: "date",
+            required: true,
+          },
+        ]}
+        values={reinstateValues}
+        onChange={(n, v) => setReinstateValues((p) => ({ ...p, [n]: v }))}
+        onSubmit={async () => {
+          try {
+            // DUMMY: simulate reinstate
+            await sleep(400);
+            setEmployee((prev) => (prev ? { ...prev, isActive: true } : prev));
+            toast({
+              title: "Success",
+              description: "Employee reinstated (dummy)",
+            });
+            setReinstateOpen(false);
+            if (autoAdvance) gotoNext();
+            else fetchEmployee();
+          } catch (error: any) {
+            toast({
+              title: "Error",
+              description:
+                error.response?.data?.message || "Failed to reinstate",
+              variant: "destructive",
+            });
+          }
+        }}
+        submitLabel="Reinstate"
+      />
+
+      <FormDialog
+        open={promoteOpen}
+        onOpenChange={setPromoteOpen}
+        title="Promote Employee"
+        description="Set the new position/grade/scale"
+        fields={[
+          {
+            name: "positionId",
+            label: "New Position ID",
+            type: "text",
+            required: true,
+          },
+          {
+            name: "gradeId",
+            label: "New Grade ID",
+            type: "text",
+            required: true,
+          },
+          {
+            name: "scaleId",
+            label: "New Scale ID",
+            type: "text",
+            required: true,
+          },
+          {
+            name: "effectiveDate",
+            label: "Effective Date",
+            type: "date",
+            required: true,
+          },
+          { name: "note", label: "Note", type: "textarea" },
+        ]}
+        values={promoteValues}
+        onChange={(n, v) => setPromoteValues((p) => ({ ...p, [n]: v }))}
+        onSubmit={async () => {
+          try {
+            // DUMMY: simulate promotion (update IDs only)
+            await sleep(400);
+            setEmployee((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    positionId: promoteValues.positionId || prev.positionId,
+                    gradeId: promoteValues.gradeId || prev.gradeId,
+                    scaleId: promoteValues.scaleId || prev.scaleId,
+                  }
+                : prev,
+            );
+            toast({
+              title: "Success",
+              description: "Employee promoted (dummy)",
+            });
+            setPromoteOpen(false);
+            if (autoAdvance) gotoNext();
+            else fetchEmployee();
+          } catch (error: any) {
+            toast({
+              title: "Error",
+              description: error.response?.data?.message || "Failed to promote",
+              variant: "destructive",
+            });
+          }
+        }}
+        submitLabel="Promote"
+      />
     </div>
   );
 }
