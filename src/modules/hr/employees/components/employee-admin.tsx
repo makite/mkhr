@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { ChevronLeft, Building2, FileCheck, AlertCircle } from "lucide-react";
@@ -100,8 +100,10 @@ export default function EmployeeFormPage() {
   });
 
   // Watch for grade changes
-  const selectedGradeId = form.watch("gradeId");
-
+  const selectedGradeId = useWatch({
+    control: form.control,
+    name: "gradeId",
+  });
   // Fetch employee data if in edit mode
   useEffect(() => {
     if (isEditMode && id) {
@@ -111,11 +113,11 @@ export default function EmployeeFormPage() {
 
   // Re-filter positions/scales once lookupData is ready (important for edit mode)
   useEffect(() => {
-    if (!dataLoading && lookupData.positions.length > 0 && selectedGradeId) {
+    if (!dataLoading && selectedGradeId) {
       updateFilteredPositions(selectedGradeId);
       updateFilteredScales(selectedGradeId);
     }
-  }, [dataLoading, lookupData.positions.length, selectedGradeId, updateFilteredPositions, updateFilteredScales]);
+  }, [dataLoading]);
 
   const fetchEmployeeData = async (employeeId: string) => {
     setLoading(true);
