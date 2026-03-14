@@ -111,11 +111,11 @@ export default function EmployeeFormPage() {
 
   // Re-filter positions/scales once lookupData is ready (important for edit mode)
   useEffect(() => {
-    if (!dataLoading && selectedGradeId) {
+    if (!dataLoading && lookupData.positions.length > 0 && selectedGradeId) {
       updateFilteredPositions(selectedGradeId);
       updateFilteredScales(selectedGradeId);
     }
-  }, [dataLoading]);
+  }, [dataLoading, lookupData.positions.length, selectedGradeId, updateFilteredPositions, updateFilteredScales]);
 
   const fetchEmployeeData = async (employeeId: string) => {
     setLoading(true);

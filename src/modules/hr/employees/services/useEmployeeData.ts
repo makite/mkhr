@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import type { EmployeeLookupData } from "../types/employee.type";
 import { employeeService } from "./employee-service";
@@ -21,10 +21,8 @@ export const useEmployeeData = () => {
     employees: [],
   });
 
-  const [filteredPositions, setFilteredPositions] = useState(
-    lookupData.positions,
-  );
-  const [filteredScales, setFilteredScales] = useState(lookupData.scales);
+  const [filteredPositions, setFilteredPositions] = useState<any[]>([]);
+  const [filteredScales, setFilteredScales] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -35,10 +33,16 @@ export const useEmployeeData = () => {
           employeeService.fetchOrganizationData(),
         ]);
 
-        setLookupData({
+        const combinedData = {
           ...lookup,
           ...org,
-        });
+        };
+        
+        setLookupData(combinedData);
+        
+        // Initialize filtered data with all positions and scales
+        setFilteredPositions(combinedData.positions || []);
+        setFilteredScales(combinedData.scales || []);
       } catch (error) {
         toast({
           title: "Error",
@@ -53,23 +57,22 @@ export const useEmployeeData = () => {
     fetchData();
   }, []);
 
-  const updateFilteredPositions = (gradeId: string) => {
+  const updateFilteredPositions = useCallback((gradeId: string) => {
     if (gradeId && lookupData.positions.length > 0) {
-      setFilteredPositions(
-        lookupData.positions.filter((p) => p.gradeId === gradeId),
-      );
+      const filtered = lookupData.positions.filter((p) => p.gradeId === gradeId);
+      setFilteredPositions(filtered);
     } else {
-      setFilteredPositions([]);
+      setFilteredPositions(lookupData.positions);
     }
-  };
+  }, [lookupData.positions]);
 
-  const updateFilteredScales = (gradeId: string) => {
+  const updateFilteredScales = useCallback((gradeId: string) => {
     if (gradeId && lookupData.scales.length > 0) {
       setFilteredScales(lookupData.scales);
     } else {
       setFilteredScales([]);
     }
-  };
+  }, [lookupData.scales]);
 
   return {
     loading,

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState } from "react";
+import React, { useState, useCallback, useContext, memo } from "react";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -19,25 +19,32 @@ interface AccordionItemProps {
 interface AccordionTriggerProps {
   children: React.ReactNode;
   className?: string;
-  isOpen?: boolean;
-  onClick?: () => void;
 }
 
 interface AccordionContentProps {
   children: React.ReactNode;
   className?: string;
-  isOpen?: boolean;
 }
 
-const AccordionContext = React.createContext<{
+interface AccordionContextType {
   openItems: string[];
   toggleItem: (value: string) => void;
   type?: "single" | "multiple";
-}>({
-  openItems: [],
-  toggleItem: () => {},
-  type: "multiple",
-});
+}
+
+const AccordionContext = React.createContext<AccordionContextType | undefined>(
+  undefined,
+);
+
+const useAccordion = () => {
+  const context = useContext(AccordionContext);
+  if (!context) {
+    throw new Error(
+      "Accordion components must be used within an Accordion provider",
+    );
+  }
+  return context;
+};
 
 export const Accordion = ({
   type = "multiple",
@@ -47,97 +54,129 @@ export const Accordion = ({
 }: AccordionProps) => {
   const [openItems, setOpenItems] = useState<string[]>(defaultValue);
 
-  const toggleItem = (value: string) => {
-    if (type === "single") {
-      setOpenItems(openItems.includes(value) ? [] : [value]);
-    } else {
-      setOpenItems(
-        openItems.includes(value)
-          ? openItems.filter((item) => item !== value)
-          : [...openItems, value],
-      );
-    }
-  };
+  const toggleItem = useCallback(
+    (value: string) => {
+      setOpenItems((prev) => {
+        if (type === "single") {
+          return prev.includes(value) ? [] : [value];
+        } else {
+          return prev.includes(value)
+            ? prev.filter((item) => item !== value)
+            : [...prev, value];
+        }
+      });
+    },
+    [type],
+  );
+
+  const contextValue = React.useMemo(
+    () => ({
+      openItems,
+      toggleItem,
+      type,
+    }),
+    [openItems, toggleItem, type],
+  );
 
   return (
-    <AccordionContext.Provider value={{ openItems, toggleItem, type }}>
+    <AccordionContext.Provider value={contextValue}>
       <div className={cn("space-y-2", className)}>{children}</div>
     </AccordionContext.Provider>
   );
 };
 
-export const AccordionItem = ({
-  value,
-  children,
-  className,
-}: AccordionItemProps) => {
-  const { openItems } = React.useContext(AccordionContext);
-  const isOpen = openItems.includes(value);
+// Memoize AccordionItem to prevent unnecessary re-renders
+export const AccordionItem = memo(
+  ({ value, children, className }: AccordionItemProps) => {
+    const { openItems } = useAccordion();
+    const isOpen = openItems.includes(value);
 
-  return (
-    <div
-      className={cn(
-        "border rounded-lg overflow-hidden",
-        isOpen && "border-primary/20",
-        className,
-      )}
-    >
-      {React.Children.map(children, (child) => {
-        if (React.isValidElement(child)) {
-          return React.cloneElement(child, { isOpen, itemValue: value } as any);
-        }
-        return child;
-      })}
-    </div>
-  );
-};
-
-export const AccordionTrigger = ({
-  children,
-  className,
-  isOpen,
-  onClick,
-}: AccordionTriggerProps) => {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "flex w-full items-center justify-between px-4 py-3 text-left font-medium transition-all hover:bg-muted/50",
-        className,
-      )}
-    >
-      {children}
-      <ChevronDown
+    return (
+      <div
         className={cn(
-          "h-4 w-4 shrink-0 transition-transform duration-200",
-          isOpen && "rotate-180",
+          "border rounded-lg overflow-hidden",
+          isOpen && "border-primary/20",
+          className,
         )}
-      />
-    </button>
-  );
+        data-state={isOpen ? "open" : "closed"}
+      >
+        {/* Pass isOpen via context instead of cloning children */}
+        <AccordionItemContext.Provider value={{ isOpen, value }}>
+          {children}
+        </AccordionItemContext.Provider>
+      </div>
+    );
+  },
+);
+
+AccordionItem.displayName = "AccordionItem";
+
+interface AccordionItemContextType {
+  isOpen: boolean;
+  value: string;
+}
+
+const AccordionItemContext = React.createContext<
+  AccordionItemContextType | undefined
+>(undefined);
+
+const useAccordionItem = () => {
+  const context = useContext(AccordionItemContext);
+  if (!context) {
+    throw new Error(
+      "AccordionTrigger and AccordionContent must be used within an AccordionItem",
+    );
+  }
+  return context;
 };
 
-export const AccordionContent = ({
-  children,
-  className,
-  isOpen,
-}: AccordionContentProps) => {
-  if (!isOpen) return null;
+// Memoize AccordionTrigger
+export const AccordionTrigger = memo(
+  ({ children, className }: AccordionTriggerProps) => {
+    const { isOpen, value } = useAccordionItem();
+    const { toggleItem } = useAccordion();
 
-  return <div className={cn("p-4 border-t", className)}>{children}</div>;
-};
+    const handleClick = useCallback(() => {
+      toggleItem(value);
+    }, [toggleItem, value]);
 
-// Hook to use accordion context
-// eslint-disable-next-line react-refresh/only-export-components
-export const useAccordionItem = () => {
-  const context = React.useContext(AccordionContext);
-  const [, setItemValue] = React.useState<string>();
+    return (
+      <button
+        type="button"
+        onClick={handleClick}
+        className={cn(
+          "flex w-full items-center justify-between px-4 py-3 text-left font-medium transition-all hover:bg-muted/50",
+          className,
+        )}
+        aria-expanded={isOpen}
+      >
+        {children}
+        <ChevronDown
+          className={cn(
+            "h-4 w-4 shrink-0 transition-transform duration-200",
+            isOpen && "rotate-180",
+          )}
+        />
+      </button>
+    );
+  },
+);
 
-  const createItemHandlers = (value: string) => ({
-    isOpen: context.openItems.includes(value),
-    onClick: () => context.toggleItem(value),
-  });
+AccordionTrigger.displayName = "AccordionTrigger";
 
-  return { ...context, createItemHandlers, setItemValue };
-};
+// Memoize AccordionContent
+export const AccordionContent = memo(
+  ({ children, className }: AccordionContentProps) => {
+    const { isOpen } = useAccordionItem();
+
+    if (!isOpen) return null;
+
+    return (
+      <div className={cn("p-4 border-t", className)} data-state="open">
+        {children}
+      </div>
+    );
+  },
+);
+
+AccordionContent.displayName = "AccordionContent";
