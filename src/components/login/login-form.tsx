@@ -12,6 +12,7 @@ import {
 } from "../ui/input-group";
 import { cn } from "@/lib/utils";
 import { Eye, EyeOff } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 export function LoginForm({
   className,
@@ -23,7 +24,7 @@ export function LoginForm({
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
+  const { toast } = useToast();
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -32,8 +33,12 @@ export function LoginForm({
     try {
       const data = await api.post("/auth/login", { email: username, password });
       localStorage.setItem("token", data.data.token);
-      console.log("Login success:", data);
       window.location.href = "/dashboard";
+      toast({
+        title: "Login successful",
+        description: "Welcome back!",
+        variant: "success",
+      });
     } catch (err: unknown) {
       setError((err as { message?: string }).message || "Login failed");
     } finally {
