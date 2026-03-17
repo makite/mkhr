@@ -76,6 +76,7 @@ class EmployeeService {
       scalesRes,
       branchesRes,
       employeesRes,
+      salaryMatrixRes,
     ] = await Promise.all([
       api.get("/departments"),
       api.get("/positions"),
@@ -83,6 +84,7 @@ class EmployeeService {
       api.get("/scales"),
       api.get("/branches"),
       api.get("/employees?limit=100"),
+      api.get("/salary-matrix/full"),
     ]);
 
     return {
@@ -92,6 +94,8 @@ class EmployeeService {
       scales: scalesRes.data?.scales || [],
       branches: branchesRes.data?.branches || [],
       employees: employeesRes.data?.employees || [],
+      salaryMatrixFull:
+        salaryMatrixRes.data?.data?.matrix || salaryMatrixRes.data?.matrix || {},
     };
   }
 }

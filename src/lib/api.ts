@@ -67,6 +67,11 @@ api.interceptors.response.use(
 
     const { status } = error.response;
     const msg = error.response.data?.message || "Something went wrong";
+    const details =
+      error.response.data?.errors ||
+      error.response.data?.error ||
+      error.response.data?.data ||
+      null;
 
     // Try one refresh attempt for expired access tokens (cookie-based refresh token).
     const originalRequest = error.config || {};
@@ -106,7 +111,7 @@ api.interceptors.response.use(
       }
     }
 
-    return Promise.reject({ message: msg, status });
+    return Promise.reject({ message: msg, status, details });
   },
 );
 

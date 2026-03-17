@@ -27,7 +27,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -164,6 +164,7 @@ export default function EmployeeDetailPage() {
   const { toast } = useToast();
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [loading, setLoading] = useState(true);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
 
   // Rotation context and auto-advance
   const [rotation, setRotation] = useState<{
@@ -208,7 +209,7 @@ export default function EmployeeDetailPage() {
     const len = rotation.ids.length;
     const nextIdx = ((idx % len) + len) % len;
     const nextId = rotation.ids[nextIdx];
-    navigate(`/employees/${nextId}`);
+    navigate(`/hr/employees/${nextId}`);
   };
 
   const gotoPrev = () => gotoIndex((rotation?.index ?? 0) - 1);
@@ -284,6 +285,25 @@ export default function EmployeeDetailPage() {
     }
   }, [id]);
 
+  const resolveAssetUrl = (url: string | null) => {
+    if (!url) return null;
+    if (/^https?:\/\//i.test(url)) return url;
+    const base = String(import.meta.env.VITE_API_BASE_URL || "");
+    try {
+      const origin = new URL(base).origin;
+      return `${origin}${url.startsWith("/") ? "" : "/"}${url}`;
+    } catch {
+      const origin = base.replace(/\/api\/?$/i, "");
+      return `${origin}${url.startsWith("/") ? "" : "/"}${url}`;
+    }
+  };
+
+  const withCacheBust = (url: string | null) => {
+    if (!url) return null;
+    const v = `v=${Date.now()}`;
+    return url.includes("?") ? `${url}&${v}` : `${url}?${v}`;
+  };
+
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
   const fetchEmployee = async () => {
@@ -291,6 +311,13 @@ export default function EmployeeDetailPage() {
     try {
       const response: ApiResponse = await api.get(`/employees/${id}`);
       setEmployee(response.data.employee);
+      try {
+        const photoRes = await api.get(`/employees/${id}/photo`);
+        const url = photoRes?.data?.photo?.url || photoRes?.photo?.url || null;
+        setPhotoUrl(withCacheBust(resolveAssetUrl(url)));
+      } catch {
+        setPhotoUrl(null);
+      }
     } catch (error: any) {
       toast({
         title: "Error",
@@ -298,14 +325,14 @@ export default function EmployeeDetailPage() {
           error.response?.data?.message || "Failed to fetch employee",
         variant: "destructive",
       });
-      navigate("/employees");
+      navigate("/hr/employees");
     } finally {
       setLoading(false);
     }
   };
 
   const handleEdit = () => {
-    navigate(`/employees/${id}/edit`);
+    navigate(`/hr/employees/${id}/edit`);
   };
 
   const handleApprove = async () => {
@@ -378,7 +405,7 @@ export default function EmployeeDetailPage() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate("/employees")}
+            onClick={() => navigate("/hr/employees")}
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -404,7 +431,7 @@ export default function EmployeeDetailPage() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate("/employees")}
+            onClick={() => navigate("/hr/employees")}
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -526,6 +553,9 @@ export default function EmployeeDetailPage() {
           <CardContent className="p-6">
             <div className="flex flex-col items-center text-center">
               <Avatar className="h-32 w-32 mb-4 border-4 border-primary/10">
+                {photoUrl ? (
+                  <AvatarImage src={photoUrl} alt="Employee photo" />
+                ) : null}
                 <AvatarFallback className="bg-primary/10 text-primary text-3xl">
                   {employee.firstName?.[0]}
                   {employee.lastName?.[0]}

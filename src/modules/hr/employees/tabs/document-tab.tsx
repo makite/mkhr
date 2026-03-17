@@ -61,6 +61,7 @@ export const DocumentTab = ({ employeeId }: DocumentTabProps) => {
   const [documentName, setDocumentName] = useState("");
 
   const documentTypes = [
+    "PHOTO",
     "ID_CARD",
     "PASSPORT",
     "RESUME",
@@ -104,13 +105,17 @@ export const DocumentTab = ({ employeeId }: DocumentTabProps) => {
 
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("file", selectedFile);
-      formData.append("type", documentType);
-      formData.append("name", documentName);
+      const dataUrl: string = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(new Error("Failed to read file"));
+        reader.readAsDataURL(selectedFile);
+      });
 
-      await api.post(`/employees/${employeeId}/documents`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+      await api.post(`/employees/${employeeId}/documents`, {
+        type: documentType,
+        name: documentName || selectedFile.name,
+        dataUrl,
       });
 
       toast({

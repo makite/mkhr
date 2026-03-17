@@ -1,9 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { CheckCircle, XCircle, Clock, AlertCircle } from "lucide-react";
+import api from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
+import { useEffect, useRef, useState } from "react";
 import type { BasicInfoValues } from "../schema/employeeSchema";
 import type { EmployeeLookupData } from "../types/employee.type";
 import type { UseFormReturn } from "react-hook-form";
@@ -56,6 +60,32 @@ export const EmployeePreview = ({
   employeeId,
   employeeData,
 }: EmployeePreviewProps) => {
+  const { toast } = useToast();
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+
+  const resolveAssetUrl = (url: string | null) => {
+    if (!url) return null;
+    if (/^https?:\/\//i.test(url)) return url;
+    const base = String(import.meta.env.VITE_API_BASE_URL || "");
+    try {
+      // If base is like http://localhost:5000/api, assets live at http://localhost:5000/
+      const origin = new URL(base).origin;
+      return `${origin}${url.startsWith("/") ? "" : "/"}${url}`;
+    } catch {
+      // Fallback: best-effort (keeps previous behavior)
+      const origin = base.replace(/\/api\/?$/i, "");
+      return `${origin}${url.startsWith("/") ? "" : "/"}${url}`;
+    }
+  };
+
+  const withCacheBust = (url: string | null) => {
+    if (!url) return null;
+    const v = `v=${Date.now()}`;
+    return url.includes("?") ? `${url}&${v}` : `${url}?${v}`;
+  };
+
   // Use form values OR employeeData if available (for edit mode)
   const values = form.watch();
 
@@ -91,15 +121,124 @@ export const EmployeePreview = ({
 
   const status = requestStatus ? getStatusBadge(requestStatus) : null;
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!employeeId) {
+        setPhotoUrl(null);
+        return;
+      }
+      try {
+        const res = await api.get(`/employees/${employeeId}/photo`);
+        const url = res?.data?.photo?.url || res?.photo?.url || null;
+        if (!cancelled) setPhotoUrl(withCacheBust(resolveAssetUrl(url)));
+      } catch {
+        if (!cancelled) setPhotoUrl(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [employeeId]);
+
+  const fileToDataUrl = (file) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+  async function compressImage(file, maxKB = 200) {
+    const dataUrl = await fileToDataUrl(file);
+    const img = document.createElement("img");
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
+
+    const maxSide = 512;
+    let { width, height } = img;
+    const scale = Math.min(1, maxSide / Math.max(width, height));
+    width = Math.round(width * scale);
+    height = Math.round(height * scale);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return dataUrl;
+    ctx.drawImage(img, 0, 0, width, height);
+
+    // try jpeg quality down until size ok
+    let quality = 0.82;
+    let out = canvas.toDataURL("image/jpeg", quality);
+    while (out.length / 1024 > maxKB && quality > 0.35) {
+      quality -= 0.08;
+      out = canvas.toDataURL("image/jpeg", quality);
+    }
+    return out;
+  }
+
+  const onPickPhoto = () => fileRef.current?.click();
+
+  const onFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !employeeId) return;
+    try {
+      setPhotoUploading(true);
+      const dataUrl = await compressImage(file, 200);
+      const res = await api.post(`/employees/${employeeId}/photo`, { dataUrl });
+      const url = res?.data?.photo?.url || res?.photo?.url || null;
+      setPhotoUrl(withCacheBust(resolveAssetUrl(url)));
+      toast({
+        title: "Success",
+        description: "Employee photo updated",
+        variant: "success",
+      });
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: err?.message || "Failed to upload photo",
+        variant: "destructive",
+      });
+    } finally {
+      setPhotoUploading(false);
+      if (e.target) e.target.value = "";
+    }
+  };
+
   return (
     <Card className="sticky top-4 shadow-lg border-t-4 border-t-primary">
       <CardContent className="p-6">
         <div className="flex flex-col items-center text-center">
           <Avatar className="h-24 w-24 mb-4 border-4 border-primary/10">
+            {photoUrl ? <AvatarImage src={photoUrl} alt="Employee photo" /> : null}
             <AvatarFallback className="bg-primary/5 text-primary text-2xl font-semibold">
               {getInitials()}
             </AvatarFallback>
           </Avatar>
+
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={onFileChange}
+          />
+
+          {employeeId && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onPickPhoto}
+              disabled={photoUploading}
+              className="mb-3"
+            >
+              {photoUploading ? "Uploading..." : photoUrl ? "Change photo" : "Upload photo"}
+            </Button>
+          )}
 
           <h3 className="font-semibold text-lg">
             {firstName || "First"} {lastName || "Last"}

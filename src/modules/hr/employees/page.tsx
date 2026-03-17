@@ -223,7 +223,7 @@ export default function EmployeesPage() {
     } catch {
       // ignore storage errors
     }
-    navigate(`/employees/${selected.id}`);
+    navigate(`/hr/employees/${selected.id}`);
   };
 
   const createActions = (list: Employee[]): Action<Employee>[] => [
@@ -235,14 +235,14 @@ export default function EmployeesPage() {
     {
       label: "Edit",
       icon: <Pencil className="h-4 w-4" />,
-      onClick: (item) => navigate(`/employees/${item.id}/edit`),
+      onClick: (item) => navigate(`/hr/employees/${item.id}/edit`),
       show: (item) =>
         item.requestStatus === "DRAFT" || item.requestStatus === "PENDING",
     },
     {
       label: "Add Additional Info",
       icon: <FilePlus2 className="h-4 w-4" />,
-      onClick: (item) => navigate(`/employees/${item.id}/edit?tab=experience`),
+      onClick: (item) => navigate(`/hr/employees/${item.id}/edit?tab=experience`),
       show: (item) => item.requestStatus === "APPROVED",
     },
     {

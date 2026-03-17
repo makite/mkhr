@@ -102,4 +102,7 @@ export interface EmployeeLookupData {
   scales: Scale[];
   branches: Branch[];
   employees: Employee[];
+
+  // Derived helper map: gradeId -> scaleId -> amount
+  salaryMatrix?: Record<string, Record<string, number>>;
 }

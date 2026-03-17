@@ -19,6 +19,7 @@ export const useEmployeeData = () => {
     scales: [],
     branches: [],
     employees: [],
+    salaryMatrix: {},
   });
 
   const [filteredPositions, setFilteredPositions] = useState<any[]>([]);
@@ -37,8 +38,34 @@ export const useEmployeeData = () => {
           ...lookup,
           ...org,
         };
+
+        // Build salary map: gradeId -> scaleId -> amount
+        const salaryMatrixRaw = (combinedData as any).salaryMatrixFull || {};
+        const gradeCodeById = new Map<string, string>();
+        const scaleCodeById = new Map<string, string>();
+
+        for (const g of (combinedData as any).grades || []) {
+          if (g?.id && g?.code) gradeCodeById.set(String(g.id), String(g.code));
+        }
+        for (const s of (combinedData as any).scales || []) {
+          if (s?.id && s?.code) scaleCodeById.set(String(s.id), String(s.code));
+        }
+
+        const salaryMatrix: Record<string, Record<string, number>> = {};
+        for (const [gradeId, gradeCode] of gradeCodeById.entries()) {
+          for (const [scaleId, scaleCode] of scaleCodeById.entries()) {
+            const amount = salaryMatrixRaw?.[gradeCode]?.[scaleCode];
+            if (typeof amount === "number") {
+              salaryMatrix[gradeId] = salaryMatrix[gradeId] || {};
+              salaryMatrix[gradeId][scaleId] = amount;
+            }
+          }
+        }
         
-        setLookupData(combinedData);
+        setLookupData({
+          ...(combinedData as any),
+          salaryMatrix,
+        });
         
         // Initialize filtered data with all positions and scales
         setFilteredPositions(combinedData.positions || []);

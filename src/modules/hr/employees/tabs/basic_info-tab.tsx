@@ -38,15 +38,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 
 import type { UseFormReturn } from "react-hook-form";
+import { useEffect, useMemo } from "react";
 import type { BasicInfoValues } from "@/modules/hr/employees/schema/employeeSchema";
 import type { EmployeeLookupData } from "@/modules/hr/employees/types/employee.type";
 
 interface BasicInfoTabProps {
   form: UseFormReturn<BasicInfoValues>;
   lookupData: EmployeeLookupData;
-  filteredPositions: any[];
-  filteredScales: any[];
-  selectedGradeId?: string;
   onSubmit: (data: BasicInfoValues) => Promise<void>;
   isSaving: boolean;
   isEdit?: boolean;
@@ -67,13 +65,44 @@ const SectionHeader = ({ icon: Icon, title, color }: any) => (
 export const BasicInfoTab = ({
   form,
   lookupData,
-  filteredPositions,
-  selectedGradeId,
   onSubmit,
   isSaving,
   isEdit = false,
   readOnly = false,
 }: BasicInfoTabProps) => {
+  const positionId = form.watch("positionId");
+  const gradeId = form.watch("gradeId");
+  const scaleId = form.watch("scaleId");
+
+  const gradeName = useMemo(() => {
+    const g = (lookupData.grades || []).find((x: any) => x.id === gradeId);
+    return g ? `${g.name}${typeof g.level !== "undefined" ? ` (Level ${g.level})` : ""}` : "";
+  }, [lookupData.grades, gradeId]);
+
+  // When position changes, auto-fill grade based on position.gradeId
+  useEffect(() => {
+    if (!positionId) return;
+    const pos = (lookupData.positions || []).find((p: any) => p.id === positionId);
+    const nextGradeId = pos?.gradeId || "";
+    if (nextGradeId && nextGradeId !== gradeId) {
+      form.setValue("gradeId", nextGradeId, { shouldDirty: true, shouldValidate: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [positionId]);
+
+  // When grade+scale selected, auto-fill basic salary from salary matrix map
+  useEffect(() => {
+    if (!gradeId || !scaleId) return;
+    const amount = lookupData.salaryMatrix?.[gradeId]?.[scaleId];
+    if (typeof amount === "number") {
+      const current = form.getValues("basicSalary");
+      if (current !== amount) {
+        form.setValue("basicSalary", amount, { shouldDirty: true, shouldValidate: true });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gradeId, scaleId]);
+
   const handleSubmit = async (data: BasicInfoValues) => {
     await onSubmit(data);
   };
@@ -142,6 +171,36 @@ export const BasicInfoTab = ({
                             ))}
                           </SelectContent>
                         </Select>
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Gender */}
+                  <FormField
+                    control={form.control}
+                    name="genderId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Gender</FormLabel>
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          disabled={readOnly}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select gender" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {lookupData.genders?.map((g: any) => (
+                              <SelectItem key={g.id} value={g.id}>
+                                {g.value}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
@@ -259,82 +318,223 @@ export const BasicInfoTab = ({
                 color="from-purple-50 to-white"
               />
 
-              <div className="p-4 grid md:grid-cols-3 gap-4">
-                {/* Grade */}
+              <div className="p-4 space-y-4">
+                <div className="grid md:grid-cols-3 gap-4">
+                  {/* Hire Date */}
+                  <FormField
+                    control={form.control}
+                    name="hireDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Hire Date *</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="date"
+                            value={
+                              field.value
+                                ? new Date(field.value).toISOString().slice(0, 10)
+                                : ""
+                            }
+                            onChange={(e) =>
+                              field.onChange(
+                                e.target.value ? new Date(e.target.value) : undefined,
+                              )
+                            }
+                            disabled={readOnly}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Employment Type */}
+                  <FormField
+                    control={form.control}
+                    name="employmentTypeId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Employment Type *</FormLabel>
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          disabled={readOnly}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select employment type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {(lookupData.employmentTypes || []).map((t: any) => (
+                              <SelectItem key={t.id} value={t.id}>
+                                {t.value}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid md:grid-cols-3 gap-4">
+                  {/* Branch */}
+                  <FormField
+                    control={form.control}
+                    name="branchId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Branch *</FormLabel>
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          disabled={readOnly}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select branch" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {(lookupData.branches || []).map((b: any) => (
+                              <SelectItem key={b.id} value={b.id}>
+                                {b.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Department */}
+                  <FormField
+                    control={form.control}
+                    name="departmentId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Department *</FormLabel>
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          disabled={readOnly}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select department" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {(lookupData.departments || []).map((d: any) => (
+                              <SelectItem key={d.id} value={d.id}>
+                                {d.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Position */}
+                  <FormField
+                    control={form.control}
+                    name="positionId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Position *</FormLabel>
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          disabled={readOnly}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select position" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {(lookupData.positions || []).map((pos: any) => (
+                              <SelectItem key={pos.id} value={pos.id}>
+                                {pos.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid md:grid-cols-3 gap-4">
+                  {/* Grade (auto-filled) */}
                 <FormField
                   control={form.control}
                   name="gradeId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Grade</FormLabel>
-
-                      <Select
-                        value={field.value}
-                        onValueChange={field.onChange}
-                        disabled={readOnly}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select grade" />
-                          </SelectTrigger>
-                        </FormControl>
-
-                        <SelectContent>
-                          {lookupData.grades?.map((grade: any) => (
-                            <SelectItem key={grade.id} value={grade.id}>
-                              {grade.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormLabel>Grade (auto)</FormLabel>
+                      <FormControl>
+                        <Input
+                          value={gradeName}
+                          placeholder="Select position to auto-fill"
+                          disabled
+                          readOnly
+                        />
+                      </FormControl>
+                      {/* keep actual gradeId in form state */}
+                      <input type="hidden" value={field.value || ""} />
                     </FormItem>
                   )}
                 />
 
-                {/* Position */}
+                {/* Scale */}
                 <FormField
                   control={form.control}
-                  name="positionId"
+                  name="scaleId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Position</FormLabel>
-
+                      <FormLabel>Scale *</FormLabel>
                       <Select
                         value={field.value}
                         onValueChange={field.onChange}
-                        disabled={readOnly || !selectedGradeId}
+                        disabled={readOnly || !gradeId}
                       >
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue
                               placeholder={
-                                !selectedGradeId
-                                  ? "Select grade first"
-                                  : "Select position"
+                                !gradeId ? "Select position first" : "Select scale"
                               }
                             />
                           </SelectTrigger>
                         </FormControl>
 
                         <SelectContent>
-                          {filteredPositions?.map((pos: any) => (
-                            <SelectItem key={pos.id} value={pos.id}>
-                              {pos.name}
+                          {(lookupData.scales || []).map((s: any) => (
+                            <SelectItem key={s.id} value={s.id}>
+                              {s.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                {/* Salary */}
+                {/* Basic Salary (auto-filled) */}
                 <FormField
                   control={form.control}
                   name="basicSalary"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Basic Salary</FormLabel>
+                      <FormLabel>Basic Salary (auto)</FormLabel>
 
                       <FormControl>
                         <div className="flex items-center gap-2">
@@ -349,13 +549,14 @@ export const BasicInfoTab = ({
                                   : Number(e.target.value),
                               )
                             }
-                            disabled={readOnly}
+                            disabled={true}
                           />
                         </div>
                       </FormControl>
                     </FormItem>
                   )}
                 />
+              </div>
               </div>
             </div>
 

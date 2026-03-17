@@ -191,7 +191,7 @@ export default function EmployeeFormPage() {
           error.response?.data?.message || "Failed to fetch employee data",
         variant: "destructive",
       });
-      navigate("/employees");
+      navigate("/hr/employees");
     } finally {
       setLoading(false);
     }
@@ -259,15 +259,18 @@ export default function EmployeeFormPage() {
     setSaving(true);
     try {
       const user = JSON.parse(localStorage.getItem("user") || "{}");
-      const companyId = user.companyId || "your-actual-company-id";
 
       const payload: any = {
         ...data,
-        ...(!isEditMode && { companyId }),
         ...(!isEditMode && { createdBy: user.id || "system" }),
         ...(!isEditMode && { createdById: user.id || "system" }),
         ...(!isEditMode && { requestStatus: "PENDING" }),
       };
+
+      // Do not send empty strings for optional UUID fields (backend treats "" as invalid)
+      for (const k of ["titleId", "genderId", "supervisorId", "gradeId"]) {
+        if (payload[k] === "") delete payload[k];
+      }
 
       if (data.dateOfBirthGrg) {
         payload.dateOfBirthGrg = format(data.dateOfBirthGrg, "yyyy-MM-dd");
@@ -285,9 +288,25 @@ export default function EmployeeFormPage() {
       } else {
         const response = await api.post("/employees", payload);
         const newEmployeeId =
-          response.data.data?.employee?.id || response.data?.employee?.id;
+          response?.data?.employee?.id ||
+          response?.employee?.id ||
+          response?.data?.data?.employee?.id ||
+          response?.data?.employee?.id;
         if (newEmployeeId) {
           setEmployeeId(newEmployeeId);
+          // Ensure other tabs become enabled immediately
+          setEmployeeData((prev) =>
+            prev
+              ? prev
+              : ({
+                  id: newEmployeeId,
+                  employeeId: "",
+                  requestStatus: "PENDING",
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                  ...(data as any),
+                } as any),
+          );
         }
         toast({
           title: "Success",
@@ -297,10 +316,17 @@ export default function EmployeeFormPage() {
 
       setActiveTab("experience");
     } catch (error: any) {
+      const details = error?.details;
+      const detailsMsg = Array.isArray(details)
+        ? details.map((e) => `${e.field}: ${e.message}`).join(", ")
+        : typeof details === "string"
+          ? details
+          : "";
       toast({
         title: "Error",
         description:
-          error.response?.data?.message ||
+          detailsMsg ||
+          error?.message ||
           `Failed to ${isEditMode ? "update" : "create"} employee`,
         variant: "destructive",
       });
@@ -327,7 +353,7 @@ export default function EmployeeFormPage() {
         title: "Success",
         description: "Employee submitted for approval",
       });
-      navigate("/employees");
+      navigate("/hr/employees");
     } catch (error: any) {
       toast({
         title: "Error",
@@ -356,7 +382,7 @@ export default function EmployeeFormPage() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => navigate("/employees")}
+              onClick={() => navigate("/hr/employees")}
               className="h-10 w-10 rounded-full"
             >
               <ChevronLeft className="h-5 w-5" />
@@ -426,10 +452,30 @@ export default function EmployeeFormPage() {
             >
               <TabsList className="grid grid-cols-5 w-full gap-1 p-1 bg-muted/50">
                 <TabsTrigger value="basic">Basic Info</TabsTrigger>
-                <TabsTrigger value="experience">Experience</TabsTrigger>
-                <TabsTrigger value="education">Education</TabsTrigger>
-                <TabsTrigger value="languages">Languages</TabsTrigger>
-                <TabsTrigger value="documents">Documents</TabsTrigger>
+                <TabsTrigger
+                  value="experience"
+                  disabled={!employeeId || employeeData?.requestStatus !== "APPROVED"}
+                >
+                  Experience
+                </TabsTrigger>
+                <TabsTrigger
+                  value="education"
+                  disabled={!employeeId || employeeData?.requestStatus !== "APPROVED"}
+                >
+                  Education
+                </TabsTrigger>
+                <TabsTrigger
+                  value="languages"
+                  disabled={!employeeId || employeeData?.requestStatus !== "APPROVED"}
+                >
+                  Languages
+                </TabsTrigger>
+                <TabsTrigger
+                  value="documents"
+                  disabled={!employeeId || employeeData?.requestStatus !== "APPROVED"}
+                >
+                  Documents
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="basic" className="mt-6">
@@ -437,9 +483,6 @@ export default function EmployeeFormPage() {
                   key={formVersion}
                   form={form}
                   lookupData={lookupData}
-                  filteredPositions={filteredPositions}
-                  filteredScales={filteredScales}
-                  selectedGradeId={selectedGradeId}
                   onSubmit={saveBasicInfo}
                   isSaving={saving}
                   isEdit={isEditMode}
@@ -448,19 +491,51 @@ export default function EmployeeFormPage() {
               </TabsContent>
 
               <TabsContent value="experience" className="mt-6">
-                <ExperienceTab key={employeeId} employeeId={employeeId} />
+                {employeeId && employeeData?.requestStatus === "APPROVED" ? (
+                  <ExperienceTab key={employeeId} employeeId={employeeId} />
+                ) : (
+                  <div className="rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground">
+                    {employeeId
+                      ? "Employee must be approved before you can fill this tab."
+                      : "Save Basic Info first to continue."}
+                  </div>
+                )}
               </TabsContent>
 
               <TabsContent value="education" className="mt-6">
-                <EducationTab key={employeeId} employeeId={employeeId} />
+                {employeeId && employeeData?.requestStatus === "APPROVED" ? (
+                  <EducationTab key={employeeId} employeeId={employeeId} />
+                ) : (
+                  <div className="rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground">
+                    {employeeId
+                      ? "Employee must be approved before you can fill this tab."
+                      : "Save Basic Info first to continue."}
+                  </div>
+                )}
               </TabsContent>
 
               <TabsContent value="languages" className="mt-6">
-                <LanguageTab key={employeeId} employeeId={employeeId} />
+                {employeeId && employeeData?.requestStatus === "APPROVED" ? (
+                  <LanguageTab key={employeeId} employeeId={employeeId} />
+                ) : (
+                  <div className="rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground">
+                    {employeeId
+                      ? "Employee must be approved before you can fill this tab."
+                      : "Save Basic Info first to continue."}
+                  </div>
+                )}
               </TabsContent>
 
               <TabsContent value="documents" className="mt-6">
-                <DocumentTab key={employeeId} employeeId={employeeId} />
+                {employeeId && employeeData?.requestStatus === "APPROVED" ? (
+                  <DocumentTab key={employeeId} employeeId={employeeId} />
+                ) : (
+                  <div className="rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground">
+                    {employeeId
+                      ? "Employee must be approved before you can fill this tab."
+                      : "Save Basic Info first to continue."}
+                  </div>
+                )}
               </TabsContent>
             </Tabs>
           </div>
@@ -474,7 +549,7 @@ export default function EmployeeFormPage() {
               <div className="container mx-auto flex justify-end gap-3">
                 <Button
                   variant="outline"
-                  onClick={() => navigate("/employees")}
+                  onClick={() => navigate("/hr/employees")}
                 >
                   Cancel
                 </Button>
