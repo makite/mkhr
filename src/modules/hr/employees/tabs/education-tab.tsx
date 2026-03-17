@@ -81,6 +81,24 @@ export const EducationTab = ({
     name: "educations",
   });
 
+  const handleRemove = async (index: number) => {
+    const row = form.getValues(`educations.${index}` as any) as any;
+    if (employeeId && row?.id) {
+      try {
+        await api.delete(`/employees/${employeeId}/educations/${row.id}`);
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description:
+            error.response?.data?.message || "Failed to delete education",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    remove(index);
+  };
+
   useEffect(() => {
     if (employeeId) {
       fetchEducations();
@@ -161,6 +179,7 @@ export const EducationTab = ({
       };
 
       await api.post(`/employees/${employeeId}/educations`, payload);
+      await fetchEducations();
 
       toast({
         title: "Success",
@@ -228,7 +247,7 @@ export const EducationTab = ({
                       variant="ghost"
                       size="icon"
                       className="absolute right-2 top-2 h-8 w-8 text-destructive"
-                      onClick={() => remove(index)}
+                      onClick={() => handleRemove(index)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

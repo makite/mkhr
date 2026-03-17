@@ -33,7 +33,8 @@ export interface FormField {
     | "switch"
     | "date"
     | "icon"
-    | "multiselect";
+    | "multiselect"
+    | "radio";
   placeholder?: string;
   required?: boolean;
   disabled?: boolean;
@@ -84,10 +85,36 @@ export function FormDialog({
 
   const renderField = (field: FormField) => {
     switch (field.type) {
+      case "radio": {
+        const v = String(values[field.name] || "");
+        const options = field.options || [];
+        return (
+          <div className={cn("space-y-2", field.className)}>
+            {options.map((o) => (
+              <label key={o.value} className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="radio"
+                  name={field.name}
+                  value={o.value}
+                  checked={v === o.value}
+                  onChange={() => onChange(field.name, o.value)}
+                  disabled={field.disabled || loading}
+                />
+                <span>{o.label}</span>
+              </label>
+            ))}
+          </div>
+        );
+      }
+
       case "select":
         return (
           <Select
-            value={values[field.name] || "none"} // Default to "none" if undefined
+            value={
+              field.required
+                ? String(values[field.name] || "")
+                : String(values[field.name] || "none")
+            }
             onValueChange={(value) => onChange(field.name, value)}
             disabled={field.disabled || loading}
           >

@@ -43,6 +43,7 @@ interface Employee {
   lastName: string;
   fullNameAm?: string;
   requestStatus: "DRAFT" | "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
+  empStatus?: "ACTIVE" | "ON_LEAVE" | "TERMINATED" | "RESIGNED" | "SUSPENDED";
   createdAt: string;
   updatedAt: string;
   positionRef?: {
@@ -136,6 +137,7 @@ export default function EmployeesPage() {
   });
   const [filters, setFilters] = useState({
     status: "all",
+    active: "all",
     search: "",
     department: "",
   });
@@ -200,6 +202,20 @@ export default function EmployeesPage() {
       },
     },
     {
+      id: "employment",
+      header: "Employment",
+      accessorFn: (row) => row.empStatus,
+      cell: ({ row }) => {
+        const s = String(row.original.empStatus || "ACTIVE");
+        const terminated = s === "TERMINATED";
+        return (
+          <Badge variant={terminated ? "destructive" : "outline"}>
+            {terminated ? "Inactive (Terminated)" : "Active"}
+          </Badge>
+        );
+      },
+    },
+    {
       id: "createdAt",
       header: "Created",
       accessorFn: (row) => row.createdAt,
@@ -237,13 +253,15 @@ export default function EmployeesPage() {
       icon: <Pencil className="h-4 w-4" />,
       onClick: (item) => navigate(`/hr/employees/${item.id}/edit`),
       show: (item) =>
-        item.requestStatus === "DRAFT" || item.requestStatus === "PENDING",
+        (item.requestStatus === "DRAFT" || item.requestStatus === "PENDING") &&
+        item.empStatus !== "TERMINATED",
     },
     {
       label: "Add Additional Info",
       icon: <FilePlus2 className="h-4 w-4" />,
       onClick: (item) => navigate(`/hr/employees/${item.id}/edit?tab=experience`),
-      show: (item) => item.requestStatus === "APPROVED",
+      show: (item) =>
+        item.requestStatus === "APPROVED" && item.empStatus !== "TERMINATED",
     },
     {
       label: "Approve",
@@ -307,6 +325,9 @@ export default function EmployeesPage() {
         page: pagination.page.toString(),
         limit: pagination.limit.toString(),
         ...(filters.status !== "all" && { status: filters.status }),
+        ...(filters.active !== "all" && {
+          empStatus: filters.active === "active" ? "ACTIVE" : "TERMINATED",
+        }),
         ...(filters.search && { search: filters.search }),
         ...(filters.department && { departmentId: filters.department }),
       });
@@ -393,6 +414,23 @@ export default function EmployeesPage() {
                 <SelectItem value="PENDING">Pending</SelectItem>
                 <SelectItem value="APPROVED">Approved</SelectItem>
                 <SelectItem value="REJECTED">Rejected</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select
+              value={filters.active}
+              onValueChange={(value) => {
+                setFilters((prev) => ({ ...prev, active: value }));
+                setPagination((prev) => ({ ...prev, page: 1 }));
+                fetchData();
+              }}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Employment" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All (Active/Terminated)</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="terminated">Terminated</SelectItem>
               </SelectContent>
             </Select>
             <Button variant="outline" size="icon" onClick={fetchData}>

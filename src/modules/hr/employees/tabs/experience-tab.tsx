@@ -82,6 +82,25 @@ export const ExperienceTab = ({
     name: "experiences",
   });
 
+  const handleRemove = async (index: number) => {
+    const row = form.getValues(`experiences.${index}` as any) as any;
+    // If it exists on server, delete it first (CRUD)
+    if (employeeId && row?.id) {
+      try {
+        await api.delete(`/employees/${employeeId}/experiences/${row.id}`);
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description:
+            error.response?.data?.message || "Failed to delete experience",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    remove(index);
+  };
+
   useEffect(() => {
     if (employeeId) {
       fetchExperiences();
@@ -161,6 +180,8 @@ export const ExperienceTab = ({
       };
 
       await api.post(`/employees/${employeeId}/experiences`, payload);
+      // Refresh so newly created rows get ids
+      await fetchExperiences();
 
       toast({
         title: "Success",
@@ -228,7 +249,7 @@ export const ExperienceTab = ({
                       variant="ghost"
                       size="icon"
                       className="absolute right-2 top-2 h-8 w-8 text-destructive"
-                      onClick={() => remove(index)}
+                      onClick={() => handleRemove(index)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

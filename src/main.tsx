@@ -38,6 +38,9 @@ const EmployeeAdminPage = lazy(
   () => import("./modules/hr/employees/components/employee-admin"),
 );
 const HRSettingsPage = lazy(() => import("./modules/hr/settings/page"));
+const HrActionsApprovalPage = lazy(
+  () => import("./modules/hr/actions-approval/page"),
+);
 
 // Placeholder for missing modules
 const PlaceholderPage = lazy(() => import("./components/placeholder-page"));
@@ -103,6 +106,10 @@ createRoot(document.getElementById("root")!).render(
             element={<EmployeeAdminPage />}
           />
           <Route path="/hr/employees/new" element={<EmployeeAdminPage />} />
+          <Route
+            path="/hr/actions-approval"
+            element={<HrActionsApprovalPage />}
+          />
 
           {/* Other modules */}
           <Route path="/hr-leave/dashboard" element={<PlaceholderPage />} />

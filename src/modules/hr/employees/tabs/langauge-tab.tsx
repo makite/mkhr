@@ -93,6 +93,24 @@ export const LanguageTab = ({
     name: "languages",
   });
 
+  const handleRemove = async (index: number) => {
+    const row = form.getValues(`languages.${index}` as any) as any;
+    if (employeeId && row?.id) {
+      try {
+        await api.delete(`/employees/${employeeId}/languages/${row.id}`);
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description:
+            error.response?.data?.message || "Failed to delete language",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    remove(index);
+  };
+
   // Fetch existing languages when employeeId is available
   useEffect(() => {
     if (employeeId) {
@@ -164,6 +182,7 @@ export const LanguageTab = ({
       await api.post(`/employees/${employeeId}/languages`, {
         languages: data.languages,
       });
+      await fetchLanguages();
 
       toast({
         title: "Success",
@@ -242,7 +261,7 @@ export const LanguageTab = ({
                       variant="ghost"
                       size="icon"
                       className="absolute right-2 top-2 h-8 w-8 text-destructive"
-                      onClick={() => remove(index)}
+                      onClick={() => handleRemove(index)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
