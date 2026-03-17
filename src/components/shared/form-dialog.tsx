@@ -93,9 +93,11 @@ export function FormDialog({
               <SelectValue placeholder={field.placeholder} />
             </SelectTrigger>
             <SelectContent>
-              {/* Add a default "None" option if needed */}
-              {field.name === "parentId" && (
-                <SelectItem value="none">None (Root Level)</SelectItem>
+              {/* Add a default "None" option for optional selects */}
+              {!field.required && (
+                <SelectItem value="none">
+                  {field.name === "parentId" ? "None (Root Level)" : "None"}
+                </SelectItem>
               )}
               {field.options?.map((option) => (
                 <SelectItem key={option.value} value={option.value}>

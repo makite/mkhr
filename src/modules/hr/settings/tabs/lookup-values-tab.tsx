@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState, useEffect } from "react";
 import { type ColumnDef } from "@tanstack/react-table";
@@ -122,7 +123,9 @@ export function LookupValuesTab() {
         } catch (error) {
           toast({
             title: "Error",
-            description: "Failed to update status",
+            description:
+              (error as { message?: string })?.message ||
+              "Failed to update status",
             variant: "destructive",
           });
         }
@@ -145,7 +148,9 @@ export function LookupValuesTab() {
         } catch (error) {
           toast({
             title: "Error",
-            description: "Failed to delete lookup value",
+            description:
+              (error as { message?: string })?.message ||
+              "Failed to delete lookup value",
             variant: "destructive",
           });
         }
@@ -216,7 +221,9 @@ export function LookupValuesTab() {
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to fetch lookup types",
+        description:
+          (error as { message?: string })?.message ||
+          "Failed to fetch lookup types",
         variant: "destructive",
       });
     }
@@ -225,12 +232,31 @@ export function LookupValuesTab() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/lookups/${selectedType}`);
-      setData(response.data.values);
+      const response = await api.get(
+        `/lookups/${selectedType}?includeInactive=true`,
+      );
+      const selected = lookupTypes.find((t) => t.code === selectedType);
+      const values = Array.isArray(response.data.values)
+        ? response.data.values
+        : [];
+
+      // Backend returns values without "type" object; normalize for the table + edit dialog.
+      setData(
+        values.map((v: any) => ({
+          ...v,
+          type: {
+            id: selected?.id || "",
+            code: selectedType,
+            name: selected?.name || selectedType,
+          },
+        })),
+      );
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to fetch lookup values",
+        description:
+          (error as { message?: string })?.message ||
+          "Failed to fetch lookup values",
         variant: "destructive",
       });
     } finally {
@@ -241,13 +267,23 @@ export function LookupValuesTab() {
   const handleSubmit = async () => {
     try {
       if (editingItem) {
-        await api.put(`/lookups/values/${editingItem.id}`, formValues);
+        await api.put(`/lookups/values/${editingItem.id}`, {
+          value: formValues.value,
+          description: formValues.description,
+          sortOrder: Number(formValues.sortOrder) || 0,
+          isActive: formValues.isActive,
+        });
         toast({
           title: "Success",
           description: "Lookup value updated successfully",
         });
       } else {
-        await api.post(`/lookups/${selectedType}/values`, formValues);
+        await api.post(`/lookups/${selectedType}/values`, {
+          code: formValues.code,
+          value: formValues.value,
+          description: formValues.description,
+          sortOrder: Number(formValues.sortOrder) || 0,
+        });
         toast({
           title: "Success",
           description: "Lookup value created successfully",
@@ -267,7 +303,9 @@ export function LookupValuesTab() {
     } catch (error) {
       toast({
         title: "Error",
-        description: editingItem ? "Failed to update" : "Failed to create",
+        description:
+          (error as { message?: string })?.message ||
+          (editingItem ? "Failed to update" : "Failed to create"),
         variant: "destructive",
       });
     }

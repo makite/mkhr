@@ -203,7 +203,7 @@ export function ScalesTab() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const response = await api.get("/scales");
+      const response = await api.get("/scales?includeInactive=true");
       const scales: Scale[] = (response.data.scales || []).map((s: any) => ({
         ...s,
         _count: s._count || { salarySteps: 0, employeeScales: 0 },

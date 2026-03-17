@@ -398,15 +398,11 @@ export function DepartmentsTab() {
   const handleSubmit = async () => {
     try {
       // Create a copy of formValues for submission
-      const submitValues = { ...formValues };
+      const submitValues: any = { ...formValues };
 
-      // Convert "none" back to empty string for API
-      if (submitValues.parentId === "none") {
-        submitValues.parentId = "";
-      }
-      if (submitValues.headOfDeptId === "none") {
-        submitValues.headOfDeptId = "";
-      }
+      // Convert "none" back to null for API (Prisma expects null, not empty string)
+      if (submitValues.parentId === "none") submitValues.parentId = null;
+      if (submitValues.headOfDeptId === "none") submitValues.headOfDeptId = null;
 
       if (editingItem) {
         await api.put(`/departments/${editingItem.id}`, submitValues);

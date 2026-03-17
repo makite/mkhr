@@ -463,17 +463,13 @@ export function BranchesTab() {
   const handleSubmit = async () => {
     try {
       // Create a copy of formValues for submission
-      const submitValues = { ...formValues };
+      const submitValues: any = { ...formValues };
 
-      // Convert "none" back to empty string for API
-      if (submitValues.parentId === "none") {
-        submitValues.parentId = "";
-      }
+      // Convert "none" back to null for API (Prisma expects null, not empty string)
+      if (submitValues.parentId === "none") submitValues.parentId = null;
 
-      // Convert level back to number
-      if (submitValues.level) {
-        submitValues.level = (submitValues.level.toString() || "1") as any;
-      }
+      // Convert level back to number (FormDialog returns string for number inputs)
+      submitValues.level = Number(submitValues.level || 1);
 
       if (editingItem) {
         await api.put(`/branches/${editingItem.id}`, submitValues);

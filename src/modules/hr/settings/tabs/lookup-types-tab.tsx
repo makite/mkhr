@@ -106,7 +106,8 @@ export function LookupTypesTab() {
         } catch (error) {
           toast({
             title: "Error",
-            description: "Failed to update status",
+            description:
+              (error as { message?: string })?.message || "Failed to update status",
             variant: "destructive",
           });
         }
@@ -129,7 +130,9 @@ export function LookupTypesTab() {
         } catch (error) {
           toast({
             title: "Error",
-            description: "Failed to delete lookup type",
+            description:
+              (error as { message?: string })?.message ||
+              "Failed to delete lookup type",
             variant: "destructive",
           });
         }
@@ -174,14 +177,16 @@ export function LookupTypesTab() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const response = await api.get("/lookups/types");
-      console.log("types", response.data.types);
-
+      const response = await api.get(
+        "/lookups/types?includeInactive=true&includeCounts=true",
+      );
       setData(response.data.types);
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to fetch lookup types",
+        description:
+          (error as { message?: string })?.message ||
+          "Failed to fetch lookup types",
         variant: "destructive",
       });
     } finally {
@@ -192,13 +197,21 @@ export function LookupTypesTab() {
   const handleSubmit = async () => {
     try {
       if (editingItem) {
-        await api.put(`/lookups/types/${editingItem.id}`, formValues);
+        await api.put(`/lookups/types/${editingItem.id}`, {
+          name: formValues.name,
+          description: formValues.description,
+          isActive: formValues.isActive,
+        });
         toast({
           title: "Success",
           description: "Lookup type updated successfully",
         });
       } else {
-        await api.post("/lookups/types", formValues);
+        await api.post("/lookups/types", {
+          code: formValues.code,
+          name: formValues.name,
+          description: formValues.description,
+        });
         toast({
           title: "Success",
           description: "Lookup type created successfully",
@@ -211,7 +224,9 @@ export function LookupTypesTab() {
     } catch (error) {
       toast({
         title: "Error",
-        description: editingItem ? "Failed to update" : "Failed to create",
+        description:
+          (error as { message?: string })?.message ||
+          (editingItem ? "Failed to update" : "Failed to create"),
         variant: "destructive",
       });
     }

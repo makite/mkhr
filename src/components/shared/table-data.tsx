@@ -377,7 +377,11 @@ export function DataTable<T extends { id: string }>({
                             return (
                               <DropdownMenuItem
                                 key={index}
-                                onClick={() => action.onClick(row.original)}
+                                onSelect={(e) => {
+                                  // Radix DropdownMenuItem fires onSelect reliably; onClick can be inconsistent
+                                  e.preventDefault();
+                                  action.onClick(row.original);
+                                }}
                                 className={cn(
                                   variant === "destructive" &&
                                     "text-destructive focus:text-destructive",
