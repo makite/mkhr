@@ -242,8 +242,7 @@ export default function EmployeesPage() {
     {
       label: "Add Additional Info",
       icon: <FilePlus2 className="h-4 w-4" />,
-      onClick: (item) =>
-        navigate(`/employees/${item.id}/edit?tab=experience`),
+      onClick: (item) => navigate(`/employees/${item.id}/edit?tab=experience`),
       show: (item) => item.requestStatus === "APPROVED",
     },
     {
@@ -261,8 +260,7 @@ export default function EmployeesPage() {
           } catch (error: any) {
             toast({
               title: "Error",
-              description:
-                error.response?.data?.message || "Failed to approve",
+              description: error.response?.data?.message || "Failed to approve",
               variant: "destructive",
             });
           }
@@ -287,8 +285,7 @@ export default function EmployeesPage() {
           } catch (error: any) {
             toast({
               title: "Error",
-              description:
-                error.response?.data?.message || "Failed to reject",
+              description: error.response?.data?.message || "Failed to reject",
               variant: "destructive",
             });
           }
@@ -360,7 +357,7 @@ export default function EmployeesPage() {
             <Download className="mr-2 h-4 w-4" />
             Export
           </Button>
-          <Button onClick={() => navigate("/hr/administration")}>
+          <Button onClick={() => navigate("/hr/employees/new")}>
             <UserPlus className="mr-2 h-4 w-4" />
             New Employee
           </Button>

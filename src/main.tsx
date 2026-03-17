@@ -10,6 +10,7 @@ import UserDetailPage from "./modules/system-admin/users/user-detail";
 const DashboardLayout = lazy(() => import("./layouts/dashboard-layout"));
 const LoginPage = lazy(() => import("./pages/login-page"));
 const NotFound = lazy(() => import("./pages/not-found-page"));
+const MyProfilePage = lazy(() => import("./pages/my-profile-page"));
 
 // System Admin
 const SystemAdminDashboard = lazy(
@@ -19,6 +20,9 @@ const UsersPage = lazy(() => import("./modules/system-admin/users/page"));
 const RolesPage = lazy(() => import("./modules/system-admin/role/page"));
 const MenuManagementPage = lazy(
   () => import("./modules/system-admin/menu/page"),
+);
+const AccessManagementPage = lazy(
+  () => import("./modules/system-admin/access/page"),
 );
 
 // HR Admin
@@ -60,10 +64,13 @@ createRoot(document.getElementById("root")!).render(
           }
         >
           {/* System Admin */}
-          <Route path="dashboard" element={<SystemAdminDashboard />} />
-          <Route path="users" element={<UsersPage />} />
-          <Route path="users/:id" element={<UserDetailPage />} />
-          <Route path="roles" element={<RolesPage />} />
+          <Route
+            path="/system-admin/dashboard"
+            element={<SystemAdminDashboard />}
+          />
+          <Route path="/system-admin/users" element={<UsersPage />} />
+          <Route path="/system-admin/users/:id" element={<UserDetailPage />} />
+          <Route path="/system-admin/roles" element={<RolesPage />} />
           <Route
             path="system-admin/company-profile"
             element={<PlaceholderPage />}
@@ -74,33 +81,48 @@ createRoot(document.getElementById("root")!).render(
             element={<PlaceholderPage />}
           />
           <Route path="system-admin/menu" element={<MenuManagementPage />} />
+          <Route
+            path="system-admin/access"
+            element={<AccessManagementPage />}
+          />
 
           {/* HR Admin */}
           <Route path="hr-admin/dashboard" element={<HRDashboard />} />
           <Route path="hr/settings" element={<HRSettingsPage />} />
           <Route path="hr-admin/training" element={<PlaceholderPage />} />
-          <Route path="employees" element={<EmployeesPage />} />
-          <Route path="employees/:id" element={<EmployeeDetailPage />} />
-          <Route path="employees/:id/edit" element={<EmployeeAdminPage />} />
+          <Route path="/hr/employees" element={<EmployeesPage />} />
+          <Route path="/hr/employees/:id" element={<EmployeeDetailPage />} />
+          <Route
+            path="/hr/employees/:id/edit"
+            element={<EmployeeAdminPage />}
+          />
+          <Route path="/hr/employees/new" element={<EmployeeAdminPage />} />
 
           {/* Other modules */}
-          <Route path="hr-leave/dashboard" element={<PlaceholderPage />} />
-          <Route path="hr-leave/manage" element={<PlaceholderPage />} />
-          <Route path="hr-leave/periods" element={<PlaceholderPage />} />
+          <Route path="/hr-leave/dashboard" element={<PlaceholderPage />} />
+          <Route path="/hr-leave/manage" element={<PlaceholderPage />} />
+          <Route path="/hr-leave/periods" element={<PlaceholderPage />} />
           <Route
-            path="vacancy-management/dashboard"
+            path="/vacancy-management/dashboard"
             element={<PlaceholderPage />}
           />
-          <Route path="vacancy-management/list" element={<PlaceholderPage />} />
-          <Route path="self-service/dashboard" element={<PlaceholderPage />} />
-          <Route path="self-service/profile" element={<PlaceholderPage />} />
           <Route
-            path="payroll-management/dashboard"
+            path="/vacancy-management/list"
             element={<PlaceholderPage />}
           />
-          <Route path="payroll-management/list" element={<PlaceholderPage />} />
+          <Route path="/self-service/dashboard" element={<PlaceholderPage />} />
+          <Route path="/self-service/profile" element={<PlaceholderPage />} />
+          <Route path="/my-profile" element={<MyProfilePage />} />
           <Route
-            path="payroll-management/reports"
+            path="/payroll-management/dashboard"
+            element={<PlaceholderPage />}
+          />
+          <Route
+            path="/payroll-management/list"
+            element={<PlaceholderPage />}
+          />
+          <Route
+            path="/payroll-management/reports"
             element={<PlaceholderPage />}
           />
         </Route>

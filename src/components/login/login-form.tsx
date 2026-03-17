@@ -31,9 +31,12 @@ export function LoginForm({
     setError("");
 
     try {
-      const data = await api.post("/auth/login", { email: username, password });
-      localStorage.setItem("token", data.data.token);
-      window.location.href = "/dashboard";
+      const response = await api.post("/auth/login", {
+        email: username,
+        password,
+      });
+      localStorage.setItem("token", response.data.token);
+      window.location.href = "/hr-admin/dashboard";
       toast({
         title: "Login successful",
         description: "Welcome back!",

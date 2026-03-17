@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { type AxiosInstance, type AxiosRequestConfig } from "axios";
 import { toast } from "sonner";
 
 let navigateFunction: ((path: string) => void) | null = null;
@@ -7,13 +7,39 @@ export const setNavigate = (navigate: (path: string) => void) => {
   navigateFunction = navigate;
 };
 
-const api = axios.create({
+type ApiClient = Omit<
+  AxiosInstance,
+  "request" | "get" | "delete" | "head" | "options" | "post" | "put" | "patch"
+> & {
+  request<T = unknown>(config: AxiosRequestConfig): Promise<T>;
+  get<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T>;
+  delete<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T>;
+  head<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T>;
+  options<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T>;
+  post<T = unknown>(
+    url: string,
+    data?: unknown,
+    config?: AxiosRequestConfig,
+  ): Promise<T>;
+  put<T = unknown>(
+    url: string,
+    data?: unknown,
+    config?: AxiosRequestConfig,
+  ): Promise<T>;
+  patch<T = unknown>(
+    url: string,
+    data?: unknown,
+    config?: AxiosRequestConfig,
+  ): Promise<T>;
+};
+
+const api: ApiClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
   withCredentials: true,
-});
+}) as unknown as ApiClient;
 
 api.interceptors.request.use(
   (config) => {

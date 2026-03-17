@@ -19,7 +19,6 @@ import {
 
 import { Link, useLocation } from "react-router";
 import { navigationService, type NavItem } from "@/services/navigation-service";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 
 // Custom Tooltip components since we can't assume they exist
@@ -39,39 +38,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const isExpanded = state === "expanded";
 
   // Get user roles from localStorage
-  const getUserRoles = (): string[] => {
-    try {
-      const user = JSON.parse(localStorage.getItem("user") || "{}");
-      const roles = Array.isArray(user.roles)
-        ? user.roles
-        : user.role
-          ? [user.role]
-          : [];
-      return roles.length > 0 ? roles : ["HR_ADMIN", "SYSTEM_ADMIN"];
-    } catch {
-      return ["HR_ADMIN", "SYSTEM_ADMIN"];
-    }
-  };
 
-  const getUserInfo = () => {
-    try {
-      const user = JSON.parse(localStorage.getItem("user") || "{}");
-      return {
-        name: user.name || user.username || "Admin User",
-        email: user.email || "admin@company.com",
-        avatar: user.avatar,
-      };
-    } catch {
-      return {
-        name: "Admin User",
-        email: "admin@company.com",
-        avatar: null,
-      };
-    }
-  };
-
-  const userRoles = getUserRoles();
-  const userInfo = getUserInfo();
   const [navigationItems, setNavigationItems] = React.useState<NavItem[]>([]);
   const [navLoading, setNavLoading] = React.useState(true);
 
@@ -95,32 +62,10 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   }, []);
 
   // Get user role display name
-  const getUserRoleDisplay = () => {
-    if (userRoles.includes("SYSTEM_ADMIN")) return "System Administrator";
-    if (userRoles.includes("HR_ADMIN")) return "HR Administrator";
-    if (userRoles.includes("HR_MANAGER")) return "HR Manager";
-    if (userRoles.includes("PAYROLL_ADMIN")) return "Payroll Administrator";
-    if (userRoles.includes("EMPLOYEE")) return "Employee";
-    return "Team Member";
-  };
 
   // Get role color using Tailwind primary/secondary
-  const getRoleBadgeColor = () => {
-    if (userRoles.includes("SYSTEM_ADMIN"))
-      return "bg-primary text-primary-foreground";
-    if (userRoles.includes("HR_ADMIN"))
-      return "bg-secondary text-secondary-foreground";
-    if (userRoles.includes("HR_MANAGER"))
-      return "bg-primary/80 text-primary-foreground";
-    if (userRoles.includes("PAYROLL_ADMIN"))
-      return "bg-secondary/80 text-secondary-foreground";
-    return "bg-muted text-muted-foreground";
-  };
 
   // Get avatar background using Tailwind primary
-  const getAvatarBackground = () => {
-    return "bg-primary text-primary-foreground";
-  };
 
   const toggleMenu = (id: string) => {
     setOpenMenus((prev) => {
@@ -189,13 +134,6 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   }, [location.pathname]);
 
   // Fix for the TypeScript error in AvatarFallback
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase();
-  };
 
   return (
     <TooltipProvider>
@@ -236,44 +174,14 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
           )}
         </SidebarHeader>
 
-        {/* User Profile Section */}
-        <div className={`p-4 ${isExpanded ? "border-b border-border" : ""}`}>
-          <div className="flex items-center gap-3">
-            <Avatar
-              className={`h-12 w-12 border-2 border-background shadow-md transition-all hover:scale-105 hover:shadow-lg ${getAvatarBackground()}`}
-            >
-              <AvatarImage src={userInfo.avatar} />
-              <AvatarFallback className="bg-primary text-primary-foreground">
-                {getInitials(userInfo.name)}
-              </AvatarFallback>
-            </Avatar>
-
-            {isExpanded && (
-              <div className="flex-1 min-w-0 animate-in fade-in slide-in-from-left-5">
-                <p className="font-semibold text-foreground truncate">
-                  {userInfo.name}
-                </p>
-                <div className="flex items-center gap-1 mt-0.5">
-                  <span
-                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeColor()}`}
-                  >
-                    {getUserRoleDisplay()}
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground truncate mt-1">
-                  {userInfo.email}
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-
         {/* Main Menu */}
         <SidebarContent className="p-2">
           <div className="overflow-y-auto max-h-[calc(100vh-300px)] custom-scrollbar">
             <div className="space-y-1 pr-1">
               {navLoading ? (
-                <div className="p-4 text-sm text-muted-foreground">Loading menu...</div>
+                <div className="p-4 text-sm text-muted-foreground">
+                  Loading menu...
+                </div>
               ) : filteredItems.length > 0 ? (
                 filteredItems.map((item) => {
                   const Icon = item.icon || LayoutDashboard;

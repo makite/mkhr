@@ -32,7 +32,8 @@ export interface FormField {
     | "select"
     | "switch"
     | "date"
-    | "icon";
+    | "icon"
+    | "multiselect";
   placeholder?: string;
   required?: boolean;
   disabled?: boolean;
@@ -163,6 +164,84 @@ export function FormDialog({
                 ))}
               </div>
             )}
+          </div>
+        );
+      }
+
+      case "multiselect": {
+        const selected: string[] = Array.isArray(values[field.name])
+          ? values[field.name]
+          : [];
+        const options = field.options || [];
+        const [q, setQ] = ((): [string, (v: string) => void] => {
+          // local state without React.useState to keep FormDialog simple:
+          // store in values under a hidden key
+          const key = `__q__${field.name}`;
+          const cur = String(values[key] || "");
+          return [
+            cur,
+            (v) => {
+              onChange(key, v);
+            },
+          ];
+        })();
+
+        const query = q.trim().toLowerCase();
+        const filtered = query
+          ? options.filter(
+              (o) =>
+                o.label.toLowerCase().includes(query) ||
+                o.value.toLowerCase().includes(query),
+            )
+          : options;
+
+        const toggle = (value: string) => {
+          const set = new Set(selected);
+          if (set.has(value)) set.delete(value);
+          else set.add(value);
+          onChange(field.name, Array.from(set));
+        };
+
+        return (
+          <div className="space-y-2">
+            <Input
+              type="text"
+              placeholder={field.placeholder || "Search..."}
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              disabled={field.disabled || loading}
+              autoComplete="off"
+            />
+            <div className="max-h-56 overflow-auto rounded-md border bg-background">
+              {filtered.slice(0, 200).map((o) => {
+                const checked = selected.includes(o.value);
+                return (
+                  <label
+                    key={o.value}
+                    className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggle(o.value)}
+                      disabled={field.disabled || loading}
+                    />
+                    <span className="font-mono text-xs text-muted-foreground">
+                      {o.value}
+                    </span>
+                    <span>{o.label}</span>
+                  </label>
+                );
+              })}
+              {filtered.length === 0 && (
+                <div className="px-3 py-2 text-sm text-muted-foreground">
+                  No matches
+                </div>
+              )}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Selected: {selected.length}
+            </div>
           </div>
         );
       }
