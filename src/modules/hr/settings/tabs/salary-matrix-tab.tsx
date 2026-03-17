@@ -67,6 +67,8 @@ export function SalaryMatrixTab() {
 
       // Transform matrix data into table rows
       const matrix = matrixRes.data.data?.matrix || matrixRes.data.matrix || {};
+      const stepIds =
+        matrixRes.data.data?.stepIds || matrixRes.data.stepIds || {};
       const rows = gradesData.map((grade: Grade) => {
         const row: SalaryMatrixRow = {
           gradeId: grade.id,
@@ -76,6 +78,7 @@ export function SalaryMatrixTab() {
 
         scalesData.forEach((scale: Scale) => {
           row[scale.id] = matrix[grade.code]?.[scale.code];
+          row[`${scale.id}__stepId`] = stepIds[grade.code]?.[scale.code];
         });
 
         return row;
@@ -114,7 +117,19 @@ export function SalaryMatrixTab() {
         return;
       }
 
-      await api.put(`/salary-matrix/step/${scaleId}`, { amount, gradeId });
+      const row = matrixData.find((r) => r.gradeId === gradeId);
+      const stepId = row?.[`${scaleId}__stepId`];
+      if (!stepId) {
+        toast({
+          title: "Error",
+          description:
+            "Salary step not found for this grade/scale. Please refresh.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      await api.put(`/salary-matrix/step/${stepId}`, { amount });
 
       // Update local state
       setMatrixData((prev) =>

@@ -224,7 +224,7 @@ export function PositionsTab() {
 
   const fetchGrades = async () => {
     try {
-      const response = await api.get("/grades");
+      const response = await api.get("/grades?includeInactive=true");
       setGrades(response.data.data?.grades || response.data.grades || []);
     } catch (error) {
       toast({
@@ -238,7 +238,7 @@ export function PositionsTab() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const response = await api.get("/positions");
+      const response = await api.get("/positions?includeInactive=true");
       setData(response.data.data?.positions || response.data.positions || []);
     } catch (error) {
       toast({

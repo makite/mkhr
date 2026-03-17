@@ -207,7 +207,7 @@ export function GradesTab() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const response = await api.get("/grades");
+      const response = await api.get("/grades?includeInactive=true");
       setData(response.data.data?.grades || response.data.grades || []);
     } catch (error) {
       toast({
@@ -222,11 +222,15 @@ export function GradesTab() {
 
   const handleSubmit = async () => {
     try {
+      const submitValues: any = {
+        ...formValues,
+        level: Number(formValues.level || 1),
+      };
       if (editingItem) {
-        await api.put(`/grades/${editingItem.id}`, formValues);
+        await api.put(`/grades/${editingItem.id}`, submitValues);
         toast({ title: "Success", description: "Grade updated successfully" });
       } else {
-        await api.post("/grades", formValues);
+        await api.post("/grades", submitValues);
         toast({ title: "Success", description: "Grade created successfully" });
       }
       setIsDialogOpen(false);
