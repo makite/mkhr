@@ -141,7 +141,7 @@ export const EmployeePreview = ({
     };
   }, [employeeId]);
 
-  const fileToDataUrl = (file) =>
+  const fileToDataUrl = (file: File): Promise<string> =>
     new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(String(reader.result || ""));
@@ -149,7 +149,7 @@ export const EmployeePreview = ({
       reader.readAsDataURL(file);
     });
 
-  async function compressImage(file, maxKB = 200) {
+  async function compressImage(file: File, maxKB = 200): Promise<string> {
     const dataUrl = await fileToDataUrl(file);
     const img = document.createElement("img");
     await new Promise((resolve, reject) => {
@@ -183,7 +183,7 @@ export const EmployeePreview = ({
 
   const onPickPhoto = () => fileRef.current?.click();
 
-  const onFileChange = async (e) => {
+  const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !employeeId) return;
     try {
@@ -197,7 +197,7 @@ export const EmployeePreview = ({
         description: "Employee photo updated",
         variant: "success",
       });
-    } catch (err) {
+    } catch (err: any) {
       toast({
         title: "Error",
         description: err?.message || "Failed to upload photo",

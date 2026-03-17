@@ -5,7 +5,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
-import { Plus, Trash2, Briefcase, Save, Calendar } from "lucide-react";
+import { Plus, Trash2, Briefcase, Calendar } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {

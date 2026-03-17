@@ -3,7 +3,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import api from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { DataTable, type Action } from "@/components/shared/table-data";
 import { FormDialog, type FormField } from "@/components/shared/form-dialog";
 import { Pencil, Trash2 } from "lucide-react";
@@ -35,6 +34,16 @@ type UserRow = {
 
 export default function AccessManagementPage() {
   const { toast } = useToast();
+
+  const pickArray = <T,>(res: any, paths: string[]): T[] => {
+    for (const p of paths) {
+      const v = p
+        .split(".")
+        .reduce((acc: any, k) => (acc && typeof acc === "object" ? acc[k] : undefined), res);
+      if (Array.isArray(v)) return v as T[];
+    }
+    return [];
+  };
 
   const [loadingPerms, setLoadingPerms] = useState(true);
   const [permissions, setPermissions] = useState<Permission[]>([]);
@@ -76,7 +85,13 @@ export default function AccessManagementPage() {
     try {
       setLoadingPerms(true);
       const res = await api.get<{ permissions: Permission[] }>("/permission");
-      setPermissions(res.data.permissions || []);
+      setPermissions(
+        pickArray<Permission>(res, [
+          "data.permissions",
+          "permissions",
+          "data.data.permissions",
+        ]),
+      );
     } catch (e) {
       toast({
         title: "Error",
@@ -92,7 +107,9 @@ export default function AccessManagementPage() {
     try {
       setLoadingRoles(true);
       const res = await api.get<{ roles: RoleModel[] }>("/role");
-      setRoles(res.data.roles || []);
+      setRoles(
+        pickArray<RoleModel>(res, ["data.roles", "roles", "data.data.roles"]),
+      );
     } catch (e) {
       toast({
         title: "Error",
@@ -109,7 +126,12 @@ export default function AccessManagementPage() {
       setLoadingUsers(true);
       const res = await api.get<{ data: UserRow[] }>("/user?limit=100");
       // user list endpoint is paginated; api wrapper returns body, so use res.data
-      const list = (res as any).data || (res as any).data?.data || [];
+      const list =
+        (res as any)?.data?.users ||
+        (res as any)?.users ||
+        (res as any)?.data ||
+        (res as any)?.data?.data ||
+        [];
       setUsers(Array.isArray(list) ? list : []);
     } catch (e) {
       toast({
@@ -328,9 +350,11 @@ export default function AccessManagementPage() {
           const res = await api.get<{
             directPermissions: { permissionId: string; granted: boolean }[];
           }>(`/user/${u.id}/permissions`);
-          const granted = (res.data.directPermissions || [])
-            .filter((p) => p.granted)
-            .map((p) => p.permissionId);
+          const direct = pickArray<{ permissionId: string; granted: boolean }>(
+            res,
+            ["data.directPermissions", "directPermissions", "data.data.directPermissions"],
+          );
+          const granted = direct.filter((p) => p.granted).map((p) => p.permissionId);
           setUserDirectPerms(granted);
         } catch {
           setUserDirectPerms([]);

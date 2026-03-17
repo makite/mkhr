@@ -24,7 +24,11 @@ export const basicInfoSchema = z.object({
 
   // Employment Details
   employmentTypeId: z.string().min(1, "Employment type is required"),
-  hireDate: z.date({ required_error: "Hire date is required" }),
+  hireDate: z.coerce
+    .date()
+    .refine((d) => d instanceof Date && !Number.isNaN(d.getTime()), {
+      message: "Hire date is required",
+    }),
   departmentId: z.string().min(1, "Department is required"),
   positionId: z.string().min(1, "Position is required"),
   gradeId: z.string().optional().default(""),

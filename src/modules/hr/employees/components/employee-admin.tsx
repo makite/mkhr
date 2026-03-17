@@ -42,8 +42,6 @@ export default function EmployeeFormPage() {
   const {
     loading: dataLoading,
     lookupData,
-    filteredPositions,
-    filteredScales,
     updateFilteredPositions,
     updateFilteredScales,
   } = useEmployeeData();

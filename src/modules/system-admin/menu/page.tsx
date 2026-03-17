@@ -42,15 +42,6 @@ function flatten(items: ApiNavItem[], parent?: ApiNavItem): FlatItem[] {
   return out;
 }
 
-function allIds(items: ApiNavItem[]): string[] {
-  const out: string[] = [];
-  for (const it of items) {
-    out.push(it.id);
-    if (it.children?.length) out.push(...allIds(it.children));
-  }
-  return out;
-}
-
 function groupByModule(items: ApiNavItem[]) {
   const map = new Map<string, ApiNavItem[]>();
   for (const it of items) {
@@ -296,11 +287,12 @@ export default function MenuManagementPage() {
           module: item.module || "",
           icon: item.icon || "",
           roles: (item.roles || []).join(","),
-          permissions: ((item as any).permissions || []).join(","),
+          permissions: String(((item as any).permissions || []).join(",")),
           isPublic: Boolean((item as any).isPublic),
           isVisible: (item as any).isVisible === false ? false : true,
           isActive: item.isActive !== false,
           order: Number(item.order || 0),
+          parentId: String((item as any).parentId || "none"),
         });
         setDialogOpen(true);
       },
@@ -467,8 +459,8 @@ export default function MenuManagementPage() {
           roles: string[];
           permissions: { id: string; name: string; code: string; module: string }[];
         }>("/meta/security");
-        setRoles(res.data.roles || []);
-        setPermissions(res.data.permissions || []);
+        setRoles((res as any).roles || []);
+        setPermissions((res as any).permissions || []);
       } catch {
         // ignore; form still usable with manual input
       }

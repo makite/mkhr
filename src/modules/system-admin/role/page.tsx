@@ -6,9 +6,7 @@ import {
   Plus,
   Pencil,
   Trash2,
-  Eye,
   Shield,
-  MoreHorizontal,
   Users,
   RefreshCw,
 } from "lucide-react";
@@ -48,13 +46,6 @@ interface Role {
   permissions?: Array<{ id: string; name: string; code: string }>;
   userCount?: number;
   createdAt: string;
-}
-
-interface RolesResponse {
-  success: boolean;
-  data: {
-    roles: Role[];
-  };
 }
 
 const roleFormSchema = z.object({

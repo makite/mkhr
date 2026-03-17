@@ -22,8 +22,6 @@ import {
   ChevronLeft,
   ChevronRight,
   MoreHorizontal,
-  Pencil,
-  Trash2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -44,7 +42,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { FormDialog, type FormField } from "@/components/shared/form-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ro } from "date-fns/locale";
 import { useEmployeeData } from "@/modules/hr/employees/services/useEmployeeData";
 import { ActionHistory } from "./actions/action-history";
 import { ActionDetailDialog } from "./actions/action-detail-dialog";
@@ -179,7 +176,7 @@ export default function EmployeeDetailPage() {
   const [actionDetailOpen, setActionDetailOpen] = useState(false);
   const [selectedAction, setSelectedAction] = useState<any | null>(null);
 
-  const { loading: lookupLoading, lookupData } = useEmployeeData();
+  const { lookupData } = useEmployeeData();
 
   // Rotation context and auto-advance
   const [rotation, setRotation] = useState<{
@@ -409,8 +406,6 @@ export default function EmployeeDetailPage() {
     const v = `v=${Date.now()}`;
     return url.includes("?") ? `${url}&${v}` : `${url}?${v}`;
   };
-
-  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
   const fetchEmployee = async () => {
     setLoading(true);
