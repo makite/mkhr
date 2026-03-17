@@ -104,13 +104,19 @@ export default function UserDetailPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Get current user from localStorage or context (assuming it's stored)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
   const [user, setUser] = useState<User | null>(null);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [showLockDialog, setShowLockDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showStatusDialog, setShowStatusDialog] = useState(false);
+  const [statusAction, setStatusAction] = useState<"activate" | "deactivate">("activate");
 
   const form = useForm<UserFormValues>({
     resolver: zodResolver(userFormSchema),
@@ -132,6 +138,18 @@ export default function UserDetailPage() {
   });
 
   useEffect(() => {
+    // Get current user from localStorage (assuming auth token contains user info)
+    const token = localStorage.getItem('token');
+    if (token) {
+      try {
+        // Parse JWT token or get user info from localStorage
+        const userInfo = JSON.parse(localStorage.getItem('user') || '{}');
+        setCurrentUserId(userInfo.id);
+      } catch (error) {
+        console.error('Error parsing user info:', error);
+      }
+    }
+
     if (id) {
       fetchUserDetails();
       fetchActivityLogs();
@@ -207,96 +225,154 @@ export default function UserDetailPage() {
   };
 
   const handleToggleStatus = async () => {
-    try {
-      const response = await api.patch(`/user/${id}/toggle-status`);
-      if (response.data.success) {
-        toast({
-          title: "Success",
-          description: `User ${response.data.user.isActive ? "activated" : "deactivated"} successfully`,
-        });
-        fetchUserDetails();
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to toggle user status",
-        variant: "destructive",
-      });
-    }
-  };
+  // Self-protection check
+  if (currentUserId === id) {
+    toast({
+      title: "Error",
+      description: "You cannot change your own account status",
+      variant: "destructive",
+    });
+    return;
+  }
 
-  const handleResetPassword = async (data: {
-    newPassword: string;
-    confirmPassword: string;
-  }) => {
-    if (data.newPassword !== data.confirmPassword) {
-      toast({
-        title: "Error",
-        description: "Passwords do not match",
-        variant: "destructive",
-      });
-      return;
-    }
+  // Show confirmation dialog
+  setStatusAction(user?.isActive ? "deactivate" : "activate");
+  setShowStatusDialog(true);
+};
 
-    try {
-      const response = await api.post(`/user/${id}/reset-password`, {
-        newPassword: data.newPassword,
-      });
-      if (response.data.success) {
-        toast({
-          title: "Success",
-          description: "Password reset successfully",
-        });
-        setShowPasswordDialog(false);
-        passwordForm.reset();
-      }
-    } catch (error) {
+  const handleStatusToggle = async () => {
+  setActionLoading("status");
+  try {
+    const response = await api.patch(`/user/${id}/toggle-status`);
+    if (response.data.success) {
       toast({
-        title: "Error",
-        description: "Failed to reset password",
-        variant: "destructive",
+        title: "Success",
+        description: `User ${response.data.user.isActive ? "activated" : "deactivated"} successfully`,
       });
+      fetchUserDetails();
     }
-  };
+  } catch (error) {
+    toast({
+      title: "Error",
+      description: "Failed to toggle user status",
+      variant: "destructive",
+    });
+  } finally {
+    setActionLoading(null);
+  }
+};
 
-  const handleLockUser = async () => {
-    try {
-      const response = await api.patch(`/user/${id}/toggle-lock`);
-      if (response.data.success) {
-        toast({
-          title: "Success",
-          description: "User lock status updated",
-        });
-        setShowLockDialog(false);
-        fetchUserDetails();
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update lock status",
-        variant: "destructive",
-      });
-    }
-  };
+const handleResetPassword = async (data: {
+  newPassword: string;
+  confirmPassword: string;
+}) => {
+  if (data.newPassword !== data.confirmPassword) {
+    toast({
+      title: "Error",
+      description: "Passwords do not match",
+      variant: "destructive",
+    });
+    return;
+  }
 
-  const handleDeleteUser = async () => {
-    try {
-      const response = await api.delete(`/user/${id}`);
-      if (response.data.success) {
-        toast({
-          title: "Success",
-          description: "User deleted successfully",
-        });
-        navigate("/users");
-      }
-    } catch (error) {
+  // Self-protection check
+  if (currentUserId === id) {
+    toast({
+      title: "Error",
+      description: "You cannot reset your own password",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  setActionLoading("password");
+  try {
+    const response = await api.post(`/user/${id}/reset-password`, {
+      newPassword: data.newPassword,
+    });
+    if (response.data.success) {
       toast({
-        title: "Error",
-        description: "Failed to delete user",
-        variant: "destructive",
+        title: "Success",
+        description: "Password reset successfully",
       });
+      setShowPasswordDialog(false);
+      passwordForm.reset();
     }
-  };
+  } catch (error) {
+    toast({
+      title: "Error",
+      description: "Failed to reset password",
+      variant: "destructive",
+    });
+  } finally {
+    setActionLoading(null);
+  }
+};
+
+const handleLockUser = async () => {
+  // Self-protection check
+  if (currentUserId === id) {
+    toast({
+      title: "Error",
+      description: "You cannot lock your own account",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  setActionLoading("lock");
+  try {
+    const response = await api.patch(`/user/${id}/toggle-lock`);
+    if (response.data.success) {
+      toast({
+        title: "Success",
+        description: "User lock status updated",
+      });
+      setShowLockDialog(false);
+      fetchUserDetails();
+    }
+  } catch (error) {
+    toast({
+      title: "Error",
+      description: "Failed to update lock status",
+      variant: "destructive",
+    });
+  } finally {
+    setActionLoading(null);
+  }
+};
+
+const handleDeleteUser = async () => {
+  // Self-protection check
+  if (currentUserId === id) {
+    toast({
+      title: "Error",
+      description: "You cannot delete your own account",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  setActionLoading("delete");
+  try {
+    const response = await api.delete(`/user/${id}`);
+    if (response.data.success) {
+      toast({
+        title: "Success",
+        description: "User deleted successfully",
+      });
+      navigate("/users");
+    }
+  } catch (error) {
+    toast({
+      title: "Error",
+      description: "Failed to delete user",
+      variant: "destructive",
+    });
+  } finally {
+    setActionLoading(null);
+  }
+};
 
   const getActivityIcon = (status: string) => {
     switch (status) {
@@ -390,6 +466,11 @@ export default function UserDetailPage() {
                     >
                       {user.isActive ? "Active" : "Inactive"}
                     </Badge>
+                    {currentUserId === id && (
+                      <Badge className="ml-2 bg-blue-100 text-blue-800 text-xs">
+                        You
+                      </Badge>
+                    )}
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     <div className="flex items-center space-x-2">
@@ -531,8 +612,14 @@ export default function UserDetailPage() {
                 size="sm"
                 onClick={handleToggleStatus}
                 className="w-full justify-start"
+                disabled={currentUserId === id || actionLoading === "status"}
               >
-                {user.isActive ? (
+                {actionLoading === "status" ? (
+                  <>
+                    <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"></div>
+                    Processing...
+                  </>
+                ) : user.isActive ? (
                   <>
                     <XCircle className="w-4 h-4 mr-2" />
                     Deactivate
@@ -549,27 +636,57 @@ export default function UserDetailPage() {
                 size="sm"
                 onClick={() => setShowPasswordDialog(true)}
                 className="w-full justify-start"
+                disabled={currentUserId === id || actionLoading === "password"}
               >
-                <Key className="w-4 h-4 mr-2" />
-                Reset Password
+                {actionLoading === "password" ? (
+                  <>
+                    <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"></div>
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Key className="w-4 h-4 mr-2" />
+                    Reset Password
+                  </>
+                )}
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setShowLockDialog(true)}
                 className="w-full justify-start text-orange-600 hover:text-orange-700"
+                disabled={currentUserId === id || actionLoading === "lock"}
               >
-                <Lock className="w-4 h-4 mr-2" />
-                Lock Account
+                {actionLoading === "lock" ? (
+                  <>
+                    <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"></div>
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Lock className="w-4 h-4 mr-2" />
+                    Lock Account
+                  </>
+                )}
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setShowDeleteDialog(true)}
                 className="w-full justify-start text-red-600 hover:text-red-700"
+                disabled={currentUserId === id || actionLoading === "delete"}
               >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete User
+                {actionLoading === "delete" ? (
+                  <>
+                    <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"></div>
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete User
+                  </>
+                )}
               </Button>
             </CardContent>
           </Card>
@@ -780,6 +897,39 @@ export default function UserDetailPage() {
               className="bg-orange-600 hover:bg-orange-700"
             >
               Lock Account
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Status Confirmation Dialog */}
+      <Dialog open={showStatusDialog} onOpenChange={setShowStatusDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {statusAction === "activate" ? (
+                <CheckCircle className="w-5 h-5 text-green-600" />
+              ) : (
+                <XCircle className="w-5 h-5 text-red-600" />
+              )}
+              {statusAction === "activate" ? "Activate User" : "Deactivate User"}
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to {statusAction} {user?.firstName} {user?.lastName}'s account?
+              {statusAction === "activate" 
+                ? "They will be able to access the system."
+                : "They will not be able to access the system."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowStatusDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleStatusToggle}
+              className={statusAction === "activate" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}
+            >
+              {statusAction === "activate" ? "Activate" : "Deactivate"}
             </Button>
           </DialogFooter>
         </DialogContent>
