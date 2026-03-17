@@ -31,7 +31,8 @@ export interface FormField {
     | "textarea"
     | "select"
     | "switch"
-    | "date";
+    | "date"
+    | "icon";
   placeholder?: string;
   required?: boolean;
   disabled?: boolean;
@@ -127,6 +128,44 @@ export function FormDialog({
             className={cn("min-h-[100px]", field.className)}
           />
         );
+
+      case "icon": {
+        const v = String(values[field.name] || "");
+        const q = v.trim().toLowerCase();
+        const options = field.options || [];
+        const matches = q
+          ? options.filter((o) => o.value.toLowerCase().includes(q)).slice(0, 30)
+          : options.slice(0, 30);
+
+        return (
+          <div className="space-y-2">
+            <Input
+              type="text"
+              placeholder={field.placeholder}
+              value={v}
+              onChange={(e) => onChange(field.name, e.target.value)}
+              disabled={field.disabled || loading}
+              className={cn(field.className)}
+              autoComplete="off"
+              spellCheck={false}
+            />
+            {matches.length > 0 && (
+              <div className="max-h-48 overflow-auto rounded-md border bg-background">
+                {matches.map((o) => (
+                  <button
+                    key={o.value}
+                    type="button"
+                    className="w-full px-3 py-2 text-left text-sm hover:bg-accent"
+                    onClick={() => onChange(field.name, o.value)}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      }
 
       case "date":
         return (

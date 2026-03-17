@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/sidebar";
 
 import { Link, useLocation } from "react-router";
-import { getNavigationForUser } from "@/router/navigation-config";
+import { navigationService, type NavItem } from "@/services/navigation-service";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 
@@ -72,7 +72,27 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
 
   const userRoles = getUserRoles();
   const userInfo = getUserInfo();
-  const navigationItems = getNavigationForUser(userRoles);
+  const [navigationItems, setNavigationItems] = React.useState<NavItem[]>([]);
+  const [navLoading, setNavLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        setNavLoading(true);
+        const items = await navigationService.getMyNavigation();
+        if (!cancelled) setNavigationItems(items);
+      } catch {
+        // fallback to empty menu; user will still have routes accessible via direct link
+        if (!cancelled) setNavigationItems([]);
+      } finally {
+        if (!cancelled) setNavLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Get user role display name
   const getUserRoleDisplay = () => {
@@ -252,7 +272,9 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
         <SidebarContent className="p-2">
           <div className="overflow-y-auto max-h-[calc(100vh-300px)] custom-scrollbar">
             <div className="space-y-1 pr-1">
-              {filteredItems.length > 0 ? (
+              {navLoading ? (
+                <div className="p-4 text-sm text-muted-foreground">Loading menu...</div>
+              ) : filteredItems.length > 0 ? (
                 filteredItems.map((item) => {
                   const Icon = item.icon || LayoutDashboard;
                   const isOpen = openMenus[item.id] || false;
@@ -296,7 +318,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                         {isExpanded && isOpen && (
                           <div className="ml-8 mt-1 space-y-0.5 animate-in slide-in-from-left-5">
                             {item.children.map((child) => {
-                              const ChildIcon = child.icon;
+                              const ChildIcon = child.icon || LayoutDashboard;
                               const isChildActive = isRouteActive(child.path);
 
                               return (

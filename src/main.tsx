@@ -17,6 +17,9 @@ const SystemAdminDashboard = lazy(
 );
 const UsersPage = lazy(() => import("./modules/system-admin/users/page"));
 const RolesPage = lazy(() => import("./modules/system-admin/role/page"));
+const MenuManagementPage = lazy(
+  () => import("./modules/system-admin/menu/page"),
+);
 
 // HR Admin
 const HRDashboard = lazy(() => import("./modules/hr/dashboard/page"));
@@ -70,6 +73,7 @@ createRoot(document.getElementById("root")!).render(
             path="system-admin/fiscal-years"
             element={<PlaceholderPage />}
           />
+          <Route path="system-admin/menu" element={<MenuManagementPage />} />
 
           {/* HR Admin */}
           <Route path="hr-admin/dashboard" element={<HRDashboard />} />
