@@ -361,7 +361,7 @@ const handleDeleteUser = async () => {
         title: "Success",
         description: "User deleted successfully",
       });
-      navigate("/users");
+      navigate("/system-admin/users");
     }
   } catch (error) {
     toast({
@@ -409,7 +409,7 @@ const handleDeleteUser = async () => {
           <p className="text-gray-600 mt-2">
             The user you're looking for doesn't exist.
           </p>
-          <Button onClick={() => navigate("/users")} className="mt-4">
+          <Button onClick={() => navigate("/system-admin/users")} className="mt-4">
             Back to Users
           </Button>
         </div>
@@ -427,7 +427,7 @@ const handleDeleteUser = async () => {
             Manage user information and account settings
           </p>
         </div>
-        <Button variant="outline" onClick={() => navigate("/users")}>
+        <Button variant="outline" onClick={() => navigate("/system-admin/users")}>
           Back to Users
         </Button>
       </div>

@@ -34,7 +34,7 @@ export default function PlaceholderPage() {
               </ul>
             </div>
             <Button 
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate("/system-admin/dashboard")}
               variant="outline"
               className="mt-6"
             >

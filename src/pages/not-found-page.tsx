@@ -1,6 +1,7 @@
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 
 const NotFound = () => {
+  const navigate = useNavigate();
   return (
     <div className="h-[100vh] bg-white items-center flex justify-center px-5 lg:px-0">
       <div className="w-[415px] text-center flex-col items-center justify-center mx-auto gap-[100px]">
@@ -23,12 +24,19 @@ const NotFound = () => {
               changed or is temporarily unavailable.
             </p>
           </div>
-          <div>
+          <div className="flex flex-wrap justify-center gap-3">
             <Link to="/">
               <button className="bg-[#0E381F] text-white font-sans max-w-[146px] w-full h-[48px] rounded-[100px] font-medium text-sm hover:cursor-pointer hover:bg-[#227343]">
-                Home Page
+                Login
               </button>
             </Link>
+            <button
+              type="button"
+              onClick={() => navigate("/system-admin/dashboard")}
+              className="font-sans max-w-[180px] w-full h-[48px] rounded-[100px] font-medium text-sm border border-[#0E381F] text-[#0E381F] hover:bg-[#0E381F]/10"
+            >
+              Go to Dashboard
+            </button>
           </div>
         </div>
       </div>

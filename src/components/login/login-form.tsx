@@ -29,6 +29,16 @@ export function LoginForm({
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  const normalizePath = (path: string): string => {
+    if (!path || !path.startsWith("/")) return path;
+    const p = path.replace(/^\/+/, "/");
+    if (p === "/dashboard") return "/system-admin/dashboard";
+    if (p === "/users") return "/system-admin/users";
+    if (p === "/roles") return "/system-admin/roles";
+    if (p === "/employees") return "/hr/employees";
+    return p;
+  };
+
   const pickDashboardPath = (items: any[]): string => {
     const flat: any[] = [];
     const walk = (arr: any[]) => {
@@ -41,16 +51,14 @@ export function LoginForm({
     };
     walk(items);
 
-    // Prefer dashboard-looking paths first
     const dashboard =
       flat.find((i) => typeof i.path === "string" && /dashboard/i.test(i.path)) ||
       flat.find((i) => typeof i.title === "string" && /dashboard/i.test(i.title)) ||
       flat.find((i) => typeof i.id === "string" && /dashboard/i.test(i.id));
-    if (dashboard?.path) return dashboard.path;
+    if (dashboard?.path) return normalizePath(dashboard.path);
 
-    // Otherwise first visible leaf-ish item with a path
     const firstWithPath = flat.find((i) => typeof i.path === "string" && i.path.startsWith("/"));
-    return firstWithPath?.path || "/system-admin/dashboard";
+    return firstWithPath?.path ? normalizePath(firstWithPath.path) : "/system-admin/dashboard";
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -67,20 +75,19 @@ export function LoginForm({
         email: username,
         password,
       });
-      const token = response.data?.token;
-      const user = response.data?.user;
+      const body = response && typeof response === "object" ? response as any : {};
+      const token = body?.data?.token ?? body?.token;
+      const user = body?.data?.user ?? body?.user;
       if (token) localStorage.setItem("token", token);
       if (user) localStorage.setItem("user", JSON.stringify(user));
 
-      // Redirect to first permitted dashboard/module from navigation API
+      // Redirect to first permitted dashboard/module from navigation API (api returns body directly)
       try {
-        const navRes = await api.get<{
-          success: boolean;
-          message: string;
-          data: { items: any[] };
-        }>("/navigation");
-        const items = navRes.data?.items || [];
-        navigate(pickDashboardPath(items), { replace: true });
+        const navRes = await api.get<any>("/navigation");
+        const items =
+          navRes?.data?.items ?? navRes?.items ?? [];
+        const target = pickDashboardPath(Array.isArray(items) ? items : []);
+        navigate(target || "/system-admin/dashboard", { replace: true });
       } catch {
         navigate("/system-admin/dashboard", { replace: true });
       }

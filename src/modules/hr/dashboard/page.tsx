@@ -27,7 +27,7 @@ export default function HRDashboard() {
       title: "Add Employee",
       description: "Register a new employee",
       icon: UserPlus,
-      action: () => navigate("/employees/new"),
+      action: () => navigate("/hr/employees/new"),
       color: "bg-blue-500",
     },
     {
@@ -41,7 +41,7 @@ export default function HRDashboard() {
       title: "Employee List",
       description: "View and manage all employees",
       icon: Users,
-      action: () => navigate("/employees"),
+      action: () => navigate("/hr/employees"),
       color: "bg-purple-500",
     },
     {

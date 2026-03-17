@@ -34,21 +34,21 @@ export const navigationConfig: NavigationItem[] = [
         id: "system-dashboard",
         title: "Dashboard",
         icon: LayoutDashboard,
-        path: "/dashboard",
+        path: "/system-admin/dashboard",
         roles: ["SYSTEM_ADMIN", "SUPER_ADMIN"],
       },
       {
         id: "users",
         title: "Users",
         icon: Users,
-        path: "/users",
+        path: "/system-admin/users",
         roles: ["SYSTEM_ADMIN", "SUPER_ADMIN"],
       },
       {
         id: "roles",
         title: "Roles",
         icon: Settings,
-        path: "/roles",
+        path: "/system-admin/roles",
         roles: ["SYSTEM_ADMIN", "SUPER_ADMIN"],
       },
       {
@@ -101,7 +101,7 @@ export const navigationConfig: NavigationItem[] = [
         id: "employees",
         title: "Employee Management",
         icon: Users,
-        path: "/employees",
+        path: "/hr/employees",
         roles: ["HR_ADMIN", "HR_MANAGER", "SUPER_ADMIN"],
       },
       {

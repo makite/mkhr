@@ -25,14 +25,14 @@ export default function SystemAdminDashboard() {
       title: "User Management",
       description: "Add, edit, and manage user accounts",
       icon: Users,
-      action: () => navigate("/users"),
+      action: () => navigate("/system-admin/users"),
       color: "bg-blue-500",
     },
     {
       title: "Role Management",
       description: "Configure user roles and permissions",
       icon: Settings,
-      action: () => navigate("/roles"),
+      action: () => navigate("/system-admin/roles"),
       color: "bg-purple-500",
     },
     {

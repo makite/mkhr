@@ -126,6 +126,8 @@ createRoot(document.getElementById("root")!).render(
           <Route path="/self-service/dashboard" element={<PlaceholderPage />} />
           <Route path="/self-service/profile" element={<PlaceholderPage />} />
           <Route path="/my-profile" element={<MyProfilePage />} />
+          <Route path="/help" element={<PlaceholderPage />} />
+          <Route path="/settings" element={<PlaceholderPage />} />
           <Route
             path="/payroll-management/dashboard"
             element={<PlaceholderPage />}

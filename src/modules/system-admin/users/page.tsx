@@ -195,7 +195,7 @@ export default function UsersPage() {
     {
       label: "View",
       icon: <Eye className="h-4 w-4" />,
-      onClick: (item) => navigate(`/users/${item.id}`),
+      onClick: (item) => navigate(`/system-admin/users/${item.id}`),
     },
     {
       label: "Edit",
@@ -353,7 +353,7 @@ export default function UsersPage() {
         onRefresh={refresh}
         pageSize={pagination.limit}
         pageSizeOptions={[10, 20, 30, 50]}
-        onRowClick={(item) => navigate(`/users/${item.id}`)}
+        onRowClick={(item) => navigate(`/system-admin/users/${item.id}`)}
       />
 
       {/* Create/Edit Dialog */}

@@ -64,31 +64,25 @@ function mapIcons(items: ApiNavItem[]): NavItem[] {
 
 export const navigationService = {
   async getMyNavigation(): Promise<NavItem[]> {
-    const res = await api.get<ApiSuccess<{ items: ApiNavItem[] }>>("/navigation");
-    return mapIcons(res.data?.items || []);
+    const res = await api.get<any>("/navigation");
+    const items = res?.data?.items ?? res?.items ?? [];
+    return mapIcons(Array.isArray(items) ? items : []);
   },
 
   async getConfig(): Promise<ApiNavItem[]> {
-    const res = await api.get<ApiSuccess<{ items: ApiNavItem[] }>>(
-      "/navigation/config",
-    );
-    return res.data?.items || [];
+    const res = await api.get<any>("/navigation/config");
+    const items = res?.data?.items ?? res?.items ?? [];
+    return Array.isArray(items) ? items : [];
   },
 
   async createItem(item: Partial<ApiNavItem>) {
-    const res = await api.post<ApiSuccess<{ item: ApiNavItem }>>(
-      "/navigation/items",
-      item,
-    );
-    return res.data.item;
+    const res = await api.post<any>("/navigation/items", item);
+    return (res?.data?.item ?? res?.item) as ApiNavItem;
   },
 
   async updateItem(id: string, patch: Partial<ApiNavItem>) {
-    const res = await api.put<ApiSuccess<{ item: ApiNavItem }>>(
-      `/navigation/items/${id}`,
-      patch,
-    );
-    return res.data.item;
+    const res = await api.put<any>(`/navigation/items/${id}`, patch);
+    return (res?.data?.item ?? res?.item) as ApiNavItem;
   },
 
   async deleteItem(id: string) {
