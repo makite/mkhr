@@ -41,6 +41,12 @@ const api: ApiClient = axios.create({
   withCredentials: true,
 }) as unknown as ApiClient;
 
+const raw = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE_URL,
+  headers: { "Content-Type": "application/json" },
+  withCredentials: true,
+});
+
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
@@ -54,13 +60,40 @@ api.interceptors.request.use(
 
 api.interceptors.response.use(
   (response) => response.data,
-  (error) => {
+  async (error) => {
     if (!error.response) {
       return Promise.reject({ message: "Network error", status: 0 });
     }
 
     const { status } = error.response;
     const msg = error.response.data?.message || "Something went wrong";
+
+    // Try one refresh attempt for expired access tokens (cookie-based refresh token).
+    const originalRequest = error.config || {};
+    if (
+      status === 401 &&
+      !originalRequest._retry &&
+      !String(originalRequest.url || "").includes("/auth/refresh-token")
+    ) {
+      originalRequest._retry = true;
+      try {
+        const refreshRes = await raw.post("/auth/refresh-token", {});
+        const newToken =
+          refreshRes?.data?.data?.accessToken ||
+          refreshRes?.data?.data?.token ||
+          refreshRes?.data?.accessToken ||
+          null;
+
+        if (newToken) {
+          localStorage.setItem("token", String(newToken));
+          originalRequest.headers = originalRequest.headers || {};
+          originalRequest.headers.Authorization = `Bearer ${newToken}`;
+          return (await (api as any).request(originalRequest)) as any;
+        }
+      } catch {
+        // fall through to logout flow
+      }
+    }
 
     if (status === 401 || status === 403) {
       localStorage.removeItem("token");

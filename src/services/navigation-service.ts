@@ -2,6 +2,13 @@ import api from "@/lib/api";
 import * as Lucide from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
+type ApiSuccess<T> = {
+  success: boolean;
+  message: string;
+  data: T;
+  timestamp: string;
+};
+
 export type ApiNavItem = {
   id: string;
   parentId?: string | null;
@@ -57,22 +64,30 @@ function mapIcons(items: ApiNavItem[]): NavItem[] {
 
 export const navigationService = {
   async getMyNavigation(): Promise<NavItem[]> {
-    const res = await api.get<{ items: ApiNavItem[] }>("/navigation");
-    return mapIcons(res.data.items || []);
+    const res = await api.get<ApiSuccess<{ items: ApiNavItem[] }>>("/navigation");
+    return mapIcons(res.data?.items || []);
   },
 
   async getConfig(): Promise<ApiNavItem[]> {
-    const res = await api.get<{ items: ApiNavItem[] }>("/navigation/config");
-    return res.data.items || [];
+    const res = await api.get<ApiSuccess<{ items: ApiNavItem[] }>>(
+      "/navigation/config",
+    );
+    return res.data?.items || [];
   },
 
   async createItem(item: Partial<ApiNavItem>) {
-    const res = await api.post<{ item: ApiNavItem }>("/navigation/items", item);
+    const res = await api.post<ApiSuccess<{ item: ApiNavItem }>>(
+      "/navigation/items",
+      item,
+    );
     return res.data.item;
   },
 
   async updateItem(id: string, patch: Partial<ApiNavItem>) {
-    const res = await api.put<{ item: ApiNavItem }>(`/navigation/items/${id}`, patch);
+    const res = await api.put<ApiSuccess<{ item: ApiNavItem }>>(
+      `/navigation/items/${id}`,
+      patch,
+    );
     return res.data.item;
   },
 

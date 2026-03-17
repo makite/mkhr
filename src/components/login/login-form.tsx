@@ -13,6 +13,8 @@ import {
 import { cn } from "@/lib/utils";
 import { Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Link } from "react-router";
+import { useNavigate } from "react-router";
 
 export function LoginForm({
   className,
@@ -25,18 +27,64 @@ export function LoginForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const { toast } = useToast();
+  const navigate = useNavigate();
+
+  const pickDashboardPath = (items: any[]): string => {
+    const flat: any[] = [];
+    const walk = (arr: any[]) => {
+      for (const it of arr || []) {
+        if (!it) continue;
+        if (it.isActive === false) continue;
+        flat.push(it);
+        if (Array.isArray(it.children) && it.children.length) walk(it.children);
+      }
+    };
+    walk(items);
+
+    // Prefer dashboard-looking paths first
+    const dashboard =
+      flat.find((i) => typeof i.path === "string" && /dashboard/i.test(i.path)) ||
+      flat.find((i) => typeof i.title === "string" && /dashboard/i.test(i.title)) ||
+      flat.find((i) => typeof i.id === "string" && /dashboard/i.test(i.id));
+    if (dashboard?.path) return dashboard.path;
+
+    // Otherwise first visible leaf-ish item with a path
+    const firstWithPath = flat.find((i) => typeof i.path === "string" && i.path.startsWith("/"));
+    return firstWithPath?.path || "/system-admin/dashboard";
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
     try {
-      const response = await api.post("/auth/login", {
+      const response = await api.post<{
+        success: boolean;
+        message: string;
+        data: { user: any; token: string };
+      }>("/auth/login", {
         email: username,
         password,
       });
-      localStorage.setItem("token", response.data.token);
-      window.location.href = "/hr-admin/dashboard";
+      const token = response.data?.token;
+      const user = response.data?.user;
+      if (token) localStorage.setItem("token", token);
+      if (user) localStorage.setItem("user", JSON.stringify(user));
+
+      // Redirect to first permitted dashboard/module from navigation API
+      try {
+        const navRes = await api.get<{
+          success: boolean;
+          message: string;
+          data: { items: any[] };
+        }>("/navigation");
+        const items = navRes.data?.items || [];
+        navigate(pickDashboardPath(items), { replace: true });
+      } catch {
+        navigate("/system-admin/dashboard", { replace: true });
+      }
+
       toast({
         title: "Login successful",
         description: "Welcome back!",
@@ -123,9 +171,9 @@ export function LoginForm({
                   />
                   Remember me
                 </label>
-                <a href="/forgot-password" className="hover:text-green-700">
+                <Link to="/forgot-password" className="hover:text-green-700">
                   Forgot password?
-                </a>
+                </Link>
               </div>
 
               {error && <p className="text-red-600 text-sm mt-1">{error}</p>}

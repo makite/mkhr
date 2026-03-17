@@ -5,12 +5,15 @@ import { BrowserRouter, Routes, Route } from "react-router";
 import { Toaster } from "sonner";
 import SimpleProtectedRoute from "./auth/simple-protected-route";
 import UserDetailPage from "./modules/system-admin/users/user-detail";
+import NavigateSetter from "./router/navigate-setter";
 
 // Lazy loaded components
 const DashboardLayout = lazy(() => import("./layouts/dashboard-layout"));
 const LoginPage = lazy(() => import("./pages/login-page"));
 const NotFound = lazy(() => import("./pages/not-found-page"));
 const MyProfilePage = lazy(() => import("./pages/my-profile-page"));
+const ForgotPasswordPage = lazy(() => import("./pages/forgot-password-page"));
+const ResetPasswordPage = lazy(() => import("./pages/reset-password-page"));
 
 // System Admin
 const SystemAdminDashboard = lazy(
@@ -42,6 +45,7 @@ const PlaceholderPage = lazy(() => import("./components/placeholder-page"));
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <BrowserRouter>
+      <NavigateSetter />
       <Toaster
         richColors
         position="top-right"
@@ -53,6 +57,8 @@ createRoot(document.getElementById("root")!).render(
         {/* Public routes */}
         <Route path="/" element={<LoginPage />} />
         <Route path="/auth/login" element={<LoginPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         {/* Protected routes with layout */}
         <Route
