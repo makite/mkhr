@@ -11,22 +11,22 @@ type ApiClient = Omit<
   AxiosInstance,
   "request" | "get" | "delete" | "head" | "options" | "post" | "put" | "patch"
 > & {
-  request<T = unknown>(config: AxiosRequestConfig): Promise<T>;
-  get<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T>;
-  delete<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T>;
-  head<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T>;
-  options<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T>;
-  post<T = unknown>(
+  request<T = any>(config: AxiosRequestConfig): Promise<T>;
+  get<T = any>(url: string, config?: AxiosRequestConfig): Promise<T>;
+  delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<T>;
+  head<T = any>(url: string, config?: AxiosRequestConfig): Promise<T>;
+  options<T = any>(url: string, config?: AxiosRequestConfig): Promise<T>;
+  post<T = any>(
     url: string,
     data?: unknown,
     config?: AxiosRequestConfig,
   ): Promise<T>;
-  put<T = unknown>(
+  put<T = any>(
     url: string,
     data?: unknown,
     config?: AxiosRequestConfig,
   ): Promise<T>;
-  patch<T = unknown>(
+  patch<T = any>(
     url: string,
     data?: unknown,
     config?: AxiosRequestConfig,

@@ -42,30 +42,15 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { FormDialog } from "@/components/shared/form-dialog";
+import { FormDialog, type FormField } from "@/components/shared/form-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ro } from "date-fns/locale";
 import { useEmployeeData } from "@/modules/hr/employees/services/useEmployeeData";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { ActionHistory } from "./actions/action-history";
+import { ActionDetailDialog } from "./actions/action-detail-dialog";
+import type { EmployeeAction } from "./actions/action-types";
 
-type EmployeeAction = {
-  id: string;
-  employeeId: string;
-  type: "PROMOTION" | "SALARY_INCREMENT";
-  status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
-  effectiveDate: string;
-  requestedAt: string;
-  approvedAt?: string | null;
-  rejectedAt?: string | null;
-  rejectionReason?: string | null;
-  payload: any;
-};
+// action-related UI extracted to components/actions
 
 interface Employee {
   id: string;
@@ -346,24 +331,7 @@ export default function EmployeeDetailPage() {
     return approved[0] || null;
   })();
 
-  const actionTypeLabel = (t: string) =>
-    t === "PROMOTION"
-      ? "Promotion"
-      : t === "SALARY_INCREMENT"
-        ? "Salary Increment"
-        : t === "TERMINATION"
-          ? "Termination"
-          : t === "REINSTATE"
-            ? "Reinstate"
-            : t || "Action";
-
-  const nameById = (list: any[] | undefined, id?: string | null, key = "name") =>
-    (list || []).find((x: any) => String(x.id) === String(id || ""))?.[key] ||
-    null;
-
-  const terminationReasonById = (id?: string | null) =>
-    terminationReasons.find((r) => String(r.id) === String(id || ""))?.value ||
-    null;
+  // action label + detail helpers moved to `components/actions/*`
 
   useEffect(() => {
     if (id) {
@@ -549,6 +517,101 @@ export default function EmployeeDetailPage() {
     String((employee as any).empStatus || "").toUpperCase() === "TERMINATED" ||
     (employee as any).isActive === false;
 
+  const handleOpenActionDetail = (a: any) => {
+    setSelectedAction(a);
+    setActionDetailOpen(true);
+  };
+
+  const handleEditAction = (a: any) => {
+    setEditingActionId(a.id);
+    if (a.type === "PROMOTION") {
+      const p: any = a.payload || {};
+      setPromoteValues((prev) => ({
+        ...prev,
+        positionId: String(p.toPositionId || ""),
+        branchId: String(p.toBranchId || ""),
+        dutyStationId: String(p.toDutyStationId || ""),
+        departmentId: String(p.toDepartmentId || ""),
+        promotionReason: String(p.promotionReason || "PROMOTION"),
+        gradeId: String(p.toGradeId || ""),
+        scaleId: String(p.toScaleId || ""),
+        basicSalary:
+          typeof p.newBasicSalary === "number" ? String(p.newBasicSalary) : "",
+        effectiveDate: a.effectiveDate
+          ? String(a.effectiveDate).slice(0, 10)
+          : "",
+        note: String(p.note || ""),
+      }));
+      setPromoteOpen(true);
+      return;
+    }
+
+    if (a.type === "TERMINATION") {
+      const p: any = a.payload || {};
+      setTerminateValues((prev) => ({
+        ...prev,
+        applicationDate: p.applicationDate
+          ? String(p.applicationDate).slice(0, 10)
+          : "",
+        resignationDate: p.resignationDate
+          ? String(p.resignationDate).slice(0, 10)
+          : "",
+        reasonId: String(p.reasonId || ""),
+        noticeDays: typeof p.noticeDays === "number" ? p.noticeDays : 60,
+        remark: String(p.remark || ""),
+      }));
+      setTerminateOpen(true);
+      return;
+    }
+
+    if (a.type === "REINSTATE") {
+      const p: any = a.payload || {};
+      setReinstateValues((prev) => ({
+        ...prev,
+        reinstateDate: a.effectiveDate
+          ? String(a.effectiveDate).slice(0, 10)
+          : "",
+        remark: String(p.remark || ""),
+      }));
+      setReinstateOpen(true);
+      return;
+    }
+
+    const p: any = a.payload || {};
+    setIncrementValues((prev) => ({
+      ...prev,
+      incrementDate: a.effectiveDate
+        ? String(a.effectiveDate).slice(0, 10)
+        : "",
+      reason: String(p.reason || ""),
+      incrementMode: String(p.incrementMode || "AMOUNT"),
+      incrementAmount:
+        typeof p.incrementedAmount === "number"
+          ? String(p.incrementedAmount)
+          : "",
+      toScaleId: String(p.toScaleId || ""),
+      percentage: "",
+      newBasicSalary:
+        typeof p.newBasicSalary === "number" ? String(p.newBasicSalary) : "",
+    }));
+    setIncrementOpen(true);
+  };
+
+  const handleCancelAction = async (a: any) => {
+    if (!confirm("Cancel this request?")) return;
+    try {
+      await api.delete(`/employees/${id}/actions/${a.id}`);
+      toast({ title: "Success", description: "Request cancelled" });
+      fetchEmployee();
+    } catch (e: any) {
+      toast({
+        title: "Error",
+        description: e?.message || "Failed to cancel request",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="container mx-auto py-6 space-y-6">
       {/* Header */}
@@ -652,44 +715,48 @@ export default function EmployeeDetailPage() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Employee Actions</DropdownMenuLabel>
-              {!isTerminated && employee.requestStatus === "APPROVED" && canPromote && (
-                <DropdownMenuItem
-                  onClick={() => {
-                    if (hasPendingAction) {
-                      toast({
-                        title: "Blocked",
-                        description:
-                          "You already have a pending request for this employee. Approve/Reject it first.",
-                        variant: "destructive",
-                      });
-                      return;
-                    }
-                    setEditingActionId(null);
-                    setPromoteOpen(true);
-                  }}
-                >
-                  Promote
-                </DropdownMenuItem>
-              )}
-              {!isTerminated && employee.requestStatus === "APPROVED" && canIncrement && (
-                <DropdownMenuItem
-                  onClick={() => {
-                    if (hasPendingAction) {
-                      toast({
-                        title: "Blocked",
-                        description:
-                          "You already have a pending request for this employee. Approve/Reject it first.",
-                        variant: "destructive",
-                      });
-                      return;
-                    }
-                    setEditingActionId(null);
-                    setIncrementOpen(true);
-                  }}
-                >
-                  Salary Increment
-                </DropdownMenuItem>
-              )}
+              {!isTerminated &&
+                employee.requestStatus === "APPROVED" &&
+                canPromote && (
+                  <DropdownMenuItem
+                    onClick={() => {
+                      if (hasPendingAction) {
+                        toast({
+                          title: "Blocked",
+                          description:
+                            "You already have a pending request for this employee. Approve/Reject it first.",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                      setEditingActionId(null);
+                      setPromoteOpen(true);
+                    }}
+                  >
+                    Promote
+                  </DropdownMenuItem>
+                )}
+              {!isTerminated &&
+                employee.requestStatus === "APPROVED" &&
+                canIncrement && (
+                  <DropdownMenuItem
+                    onClick={() => {
+                      if (hasPendingAction) {
+                        toast({
+                          title: "Blocked",
+                          description:
+                            "You already have a pending request for this employee. Approve/Reject it first.",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                      setEditingActionId(null);
+                      setIncrementOpen(true);
+                    }}
+                  >
+                    Salary Increment
+                  </DropdownMenuItem>
+                )}
               {!isTerminated && canTerminate && (
                 <DropdownMenuItem
                   onClick={() => {
@@ -798,197 +865,14 @@ export default function EmployeeDetailPage() {
 
               <Separator className="my-4" />
 
-              <div className="w-full text-left">
-                <p className="text-sm font-semibold mb-2">Action History</p>
-                {actions.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    No requests yet.
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {actions.slice(0, 10).map((a: any) => (
-                      <div
-                        key={a.id}
-                        className="rounded-md border p-2 text-sm flex items-center justify-between gap-2 cursor-pointer hover:bg-accent/30"
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => {
-                          setSelectedAction(a);
-                          setActionDetailOpen(true);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            setSelectedAction(a);
-                            setActionDetailOpen(true);
-                          }
-                        }}
-                      >
-                        <div className="flex flex-col">
-                          <span className="font-medium">
-                            {actionTypeLabel(String(a.type || ""))}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            Effective:{" "}
-                            {a.effectiveDate
-                              ? format(new Date(a.effectiveDate), "PPP")
-                              : "-"}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge
-                            variant={
-                              a.status === "APPROVED"
-                                ? "default"
-                                : a.status === "REJECTED"
-                                  ? "destructive"
-                                  : a.status === "PENDING"
-                                    ? "outline"
-                                    : "secondary"
-                            }
-                          >
-                            {a.status}
-                          </Badge>
-
-                          {["PENDING", "REJECTED"].includes(String(a.status)) &&
-                            String(a.requestedBy || "") === currentUserId && (
-                              <>
-                                <Button
-                                  size="icon"
-                                  variant="outline"
-                                  className="h-8 w-8"
-                                  title="Edit"
-                                  onClick={() => {
-                                    setEditingActionId(a.id);
-                                    if (a.type === "PROMOTION") {
-                                      const p: any = a.payload || {};
-                                      setPromoteValues((prev) => ({
-                                        ...prev,
-                                        positionId: String(
-                                          p.toPositionId || "",
-                                        ),
-                                        branchId: String(p.toBranchId || ""),
-                                        dutyStationId: String(
-                                          p.toDutyStationId || "",
-                                        ),
-                                        departmentId: String(
-                                          p.toDepartmentId || "",
-                                        ),
-                                        promotionReason: String(
-                                          p.promotionReason || "PROMOTION",
-                                        ),
-                                        gradeId: String(p.toGradeId || ""),
-                                        scaleId: String(p.toScaleId || ""),
-                                        basicSalary:
-                                          typeof p.newBasicSalary === "number"
-                                            ? String(p.newBasicSalary)
-                                            : "",
-                                        effectiveDate: a.effectiveDate
-                                          ? String(a.effectiveDate).slice(0, 10)
-                                          : "",
-                                        note: String(p.note || ""),
-                                      }));
-                                      setPromoteOpen(true);
-                                    } else if (a.type === "TERMINATION") {
-                                      const p: any = a.payload || {};
-                                      setTerminateValues((prev) => ({
-                                        ...prev,
-                                        applicationDate: p.applicationDate
-                                          ? String(p.applicationDate).slice(
-                                              0,
-                                              10,
-                                            )
-                                          : "",
-                                        resignationDate: p.resignationDate
-                                          ? String(p.resignationDate).slice(
-                                              0,
-                                              10,
-                                            )
-                                          : "",
-                                        reasonId: String(p.reasonId || ""),
-                                        noticeDays:
-                                          typeof p.noticeDays === "number"
-                                            ? p.noticeDays
-                                            : 60,
-                                        remark: String(p.remark || ""),
-                                      }));
-                                      setTerminateOpen(true);
-                                    } else if (a.type === "REINSTATE") {
-                                      const p: any = a.payload || {};
-                                      setReinstateValues((prev) => ({
-                                        ...prev,
-                                        reinstateDate: a.effectiveDate
-                                          ? String(a.effectiveDate).slice(0, 10)
-                                          : "",
-                                        remark: String(p.remark || ""),
-                                      }));
-                                      setReinstateOpen(true);
-                                    } else {
-                                      const p: any = a.payload || {};
-                                      setIncrementValues((prev) => ({
-                                        ...prev,
-                                        incrementDate: a.effectiveDate
-                                          ? String(a.effectiveDate).slice(0, 10)
-                                          : "",
-                                        reason: String(p.reason || ""),
-                                        incrementMode: String(
-                                          p.incrementMode || "AMOUNT",
-                                        ),
-                                        incrementAmount:
-                                          typeof p.incrementedAmount ===
-                                          "number"
-                                            ? String(p.incrementedAmount)
-                                            : "",
-                                        toScaleId: String(p.toScaleId || ""),
-                                        percentage: "",
-                                        newBasicSalary:
-                                          typeof p.newBasicSalary === "number"
-                                            ? String(p.newBasicSalary)
-                                            : "",
-                                      }));
-                                      setIncrementOpen(true);
-                                    }
-                                  }}
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  size="icon"
-                                  variant="destructive"
-                                  className="h-8 w-8"
-                                  title="Cancel"
-                                  onClick={async () => {
-                                    if (!confirm("Cancel this request?"))
-                                      return;
-                                    try {
-                                      await api.delete(
-                                        `/employees/${id}/actions/${a.id}`,
-                                      );
-                                      toast({
-                                        title: "Success",
-                                        description: "Request cancelled",
-                                      });
-                                      fetchEmployee();
-                                    } catch (e: any) {
-                                      toast({
-                                        title: "Error",
-                                        description:
-                                          e?.message ||
-                                          "Failed to cancel request",
-                                        variant: "destructive",
-                                      });
-                                    }
-                                  }}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </>
-                            )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <ActionHistory
+                employeeId={String(id || "")}
+                actions={actions as any[]}
+                currentUserId={currentUserId}
+                onOpenDetail={handleOpenActionDetail}
+                onEdit={handleEditAction}
+                onCancel={handleCancelAction}
+              />
             </div>
           </CardContent>
         </Card>
@@ -1380,71 +1264,73 @@ export default function EmployeeDetailPage() {
         onOpenChange={setIncrementOpen}
         title="Salary Increment"
         description="Update the employee's base salary"
-        fields={[
-          {
-            name: "incrementDate",
-            label: "Increment Date",
-            type: "date",
-            required: true,
-          },
-          {
-            name: "reason",
-            label: "Reason",
-            type: "textarea",
-          },
-          {
-            name: "incrementMode",
-            label: "Increment Mode",
-            type: "radio",
-            required: true,
-            options: [
-              { value: "AMOUNT", label: "By Amount" },
-              { value: "SCALE", label: "By Scale" },
-              { value: "PERCENTAGE", label: "By Percentage" },
-            ],
-          },
-          ...(incrementValues.incrementMode === "AMOUNT"
-            ? [
-                {
-                  name: "incrementAmount",
-                  label: "Incremented Amount",
-                  type: "number",
-                  required: true,
-                },
-              ]
-            : []),
-          ...(incrementValues.incrementMode === "PERCENTAGE"
-            ? [
-                {
-                  name: "percentage",
-                  label: "Percentage (%)",
-                  type: "number",
-                  required: true,
-                },
-              ]
-            : []),
-          ...(incrementValues.incrementMode === "SCALE"
-            ? [
-                {
-                  name: "toScaleId",
-                  label: "New Scale",
-                  type: "select",
-                  required: true,
-                  options: (lookupData.scales || []).map((s: any) => ({
-                    value: String(s.id),
-                    label: `${s.name}${typeof s.stepNumber !== "undefined" ? ` (Step ${s.stepNumber})` : ""}`,
-                  })),
-                },
-              ]
-            : []),
-          {
-            name: "newBasicSalary",
-            label: "New Basic Salary",
-            type: "number",
-            required: true,
-            disabled: true,
-          },
-        ]}
+        fields={
+          [
+            {
+              name: "incrementDate",
+              label: "Increment Date",
+              type: "date",
+              required: true,
+            },
+            {
+              name: "reason",
+              label: "Reason",
+              type: "textarea",
+            },
+            {
+              name: "incrementMode",
+              label: "Increment Mode",
+              type: "radio",
+              required: true,
+              options: [
+                { value: "AMOUNT", label: "By Amount" },
+                { value: "SCALE", label: "By Scale" },
+                { value: "PERCENTAGE", label: "By Percentage" },
+              ],
+            },
+            ...(incrementValues.incrementMode === "AMOUNT"
+              ? [
+                  {
+                    name: "incrementAmount",
+                    label: "Incremented Amount",
+                    type: "number",
+                    required: true,
+                  },
+                ]
+              : []),
+            ...(incrementValues.incrementMode === "PERCENTAGE"
+              ? [
+                  {
+                    name: "percentage",
+                    label: "Percentage (%)",
+                    type: "number",
+                    required: true,
+                  },
+                ]
+              : []),
+            ...(incrementValues.incrementMode === "SCALE"
+              ? [
+                  {
+                    name: "toScaleId",
+                    label: "New Scale",
+                    type: "select",
+                    required: true,
+                    options: (lookupData.scales || []).map((s: any) => ({
+                      value: String(s.id),
+                      label: `${s.name}${typeof s.stepNumber !== "undefined" ? ` (Step ${s.stepNumber})` : ""}`,
+                    })),
+                  },
+                ]
+              : []),
+            {
+              name: "newBasicSalary",
+              label: "New Basic Salary",
+              type: "number",
+              required: true,
+              disabled: true,
+            },
+          ] as FormField[]
+        }
         values={incrementValues}
         onChange={(n, v) =>
           setIncrementValues((p) => {
@@ -1583,37 +1469,39 @@ export default function EmployeeDetailPage() {
         onOpenChange={setTerminateOpen}
         title="Terminate Employment"
         description="Terminate this employee (agreement ends)"
-        fields={[
-          {
-            name: "applicationDate",
-            label: "Application Date",
-            type: "date",
-            required: true,
-          },
-          {
-            name: "resignationDate",
-            label: "Resignation Date",
-            type: "date",
-            required: true,
-          },
-          {
-            name: "reasonId",
-            label: "Reason",
-            type: "select",
-            required: true,
-            options: terminationReasons.map((r) => ({
-              value: String(r.id),
-              label: String(r.value),
-            })),
-          },
-          {
-            name: "noticeDays",
-            label: "Notice Days",
-            type: "number",
-            required: true,
-          },
-          { name: "remark", label: "Remark (Optional)", type: "textarea" },
-        ]}
+        fields={
+          [
+            {
+              name: "applicationDate",
+              label: "Application Date",
+              type: "date",
+              required: true,
+            },
+            {
+              name: "resignationDate",
+              label: "Resignation Date",
+              type: "date",
+              required: true,
+            },
+            {
+              name: "reasonId",
+              label: "Reason",
+              type: "select",
+              required: true,
+              options: terminationReasons.map((r) => ({
+                value: String(r.id),
+                label: String(r.value),
+              })),
+            },
+            {
+              name: "noticeDays",
+              label: "Notice Days",
+              type: "number",
+              required: true,
+            },
+            { name: "remark", label: "Remark (Optional)", type: "textarea" },
+          ] as FormField[]
+        }
         values={terminateValues}
         onChange={(n, v) => setTerminateValues((p) => ({ ...p, [n]: v }))}
         onSubmit={async () => {
@@ -1701,15 +1589,17 @@ export default function EmployeeDetailPage() {
               )}`
             : "Reinstate this employee"
         }
-        fields={[
-          {
-            name: "reinstateDate",
-            label: "Reinstate Date (Effective Date)",
-            type: "date",
-            required: true,
-          },
-          { name: "remark", label: "Remark (Optional)", type: "textarea" },
-        ]}
+        fields={
+          [
+            {
+              name: "reinstateDate",
+              label: "Reinstate Date (Effective Date)",
+              type: "date",
+              required: true,
+            },
+            { name: "remark", label: "Remark (Optional)", type: "textarea" },
+          ] as FormField[]
+        }
         values={reinstateValues}
         onChange={(n, v) => setReinstateValues((p) => ({ ...p, [n]: v }))}
         onSubmit={async () => {
@@ -1777,98 +1667,100 @@ export default function EmployeeDetailPage() {
         onOpenChange={setPromoteOpen}
         title="Promote Employee"
         description="Set the new position/grade/scale"
-        fields={[
-          {
-            name: "positionId",
-            label: "Job Position",
-            type: "select",
-            required: true,
-            options: (lookupData.positions || []).map((p: any) => ({
-              value: String(p.id),
-              label: p.name,
-            })),
-          },
-          {
-            name: "branchId",
-            label: "Branch",
-            type: "select",
-            required: true,
-            options: (lookupData.branches || []).map((b: any) => ({
-              value: String(b.id),
-              label: b.name,
-            })),
-          },
-          {
-            name: "dutyStationId",
-            label: "Duty Station",
-            type: "select",
-            required: false,
-            options: (lookupData.branches || []).map((b: any) => ({
-              value: String(b.id),
-              label: b.name,
-            })),
-          },
-          {
-            name: "departmentId",
-            label: "Department",
-            type: "select",
-            required: true,
-            options: (lookupData.departments || []).map((d: any) => ({
-              value: String(d.id),
-              label: d.name,
-            })),
-          },
-          {
-            name: "promotionReason",
-            label: "Promotion Reason",
-            type: "select",
-            required: true,
-            options: [
-              { value: "PROMOTION", label: "Promotion" },
-              { value: "DEMOTION", label: "Demotion" },
-              { value: "RECLASSIFICATION", label: "Reclassification" },
-              { value: "LATERAL_TRANSFER", label: "Lateral Transfer" },
-              { value: "ACTING_ASSIGNMENT", label: "Acting Assignment" },
-              { value: "CONFIRMATION", label: "Confirmation" },
-              { value: "OTHER", label: "Other" },
-            ],
-          },
-          {
-            name: "scaleId",
-            label: "Scale",
-            type: "select",
-            required: true,
-            options: (lookupData.scales || []).map((s: any) => ({
-              value: String(s.id),
-              label: `${s.name}${typeof s.stepNumber !== "undefined" ? ` (Step ${s.stepNumber})` : ""}`,
-            })),
-          },
-          {
-            name: "gradeId",
-            label: "Grade",
-            type: "select",
-            required: true,
-            disabled: true,
-            options: (lookupData.grades || []).map((g: any) => ({
-              value: String(g.id),
-              label: `${g.name}${typeof g.level !== "undefined" ? ` (Level ${g.level})` : ""}`,
-            })),
-          },
-          {
-            name: "basicSalary",
-            label: "Basic Salary",
-            type: "number",
-            required: true,
-            disabled: true,
-          },
-          {
-            name: "effectiveDate",
-            label: "Effective Date",
-            type: "date",
-            required: true,
-          },
-          { name: "note", label: "Note", type: "textarea" },
-        ]}
+        fields={
+          [
+            {
+              name: "positionId",
+              label: "Job Position",
+              type: "select",
+              required: true,
+              options: (lookupData.positions || []).map((p: any) => ({
+                value: String(p.id),
+                label: p.name,
+              })),
+            },
+            {
+              name: "branchId",
+              label: "Branch",
+              type: "select",
+              required: true,
+              options: (lookupData.branches || []).map((b: any) => ({
+                value: String(b.id),
+                label: b.name,
+              })),
+            },
+            {
+              name: "dutyStationId",
+              label: "Duty Station",
+              type: "select",
+              required: false,
+              options: (lookupData.branches || []).map((b: any) => ({
+                value: String(b.id),
+                label: b.name,
+              })),
+            },
+            {
+              name: "departmentId",
+              label: "Department",
+              type: "select",
+              required: true,
+              options: (lookupData.departments || []).map((d: any) => ({
+                value: String(d.id),
+                label: d.name,
+              })),
+            },
+            {
+              name: "promotionReason",
+              label: "Promotion Reason",
+              type: "select",
+              required: true,
+              options: [
+                { value: "PROMOTION", label: "Promotion" },
+                { value: "DEMOTION", label: "Demotion" },
+                { value: "RECLASSIFICATION", label: "Reclassification" },
+                { value: "LATERAL_TRANSFER", label: "Lateral Transfer" },
+                { value: "ACTING_ASSIGNMENT", label: "Acting Assignment" },
+                { value: "CONFIRMATION", label: "Confirmation" },
+                { value: "OTHER", label: "Other" },
+              ],
+            },
+            {
+              name: "scaleId",
+              label: "Scale",
+              type: "select",
+              required: true,
+              options: (lookupData.scales || []).map((s: any) => ({
+                value: String(s.id),
+                label: `${s.name}${typeof s.stepNumber !== "undefined" ? ` (Step ${s.stepNumber})` : ""}`,
+              })),
+            },
+            {
+              name: "gradeId",
+              label: "Grade",
+              type: "select",
+              required: true,
+              disabled: true,
+              options: (lookupData.grades || []).map((g: any) => ({
+                value: String(g.id),
+                label: `${g.name}${typeof g.level !== "undefined" ? ` (Level ${g.level})` : ""}`,
+              })),
+            },
+            {
+              name: "basicSalary",
+              label: "Basic Salary",
+              type: "number",
+              required: true,
+              disabled: true,
+            },
+            {
+              name: "effectiveDate",
+              label: "Effective Date",
+              type: "date",
+              required: true,
+            },
+            { name: "note", label: "Note", type: "textarea" },
+          ] as FormField[]
+        }
         values={promoteValues}
         onChange={(n, v) =>
           setPromoteValues((p) => {
@@ -1997,225 +1889,14 @@ export default function EmployeeDetailPage() {
         submitLabel="Promote"
       />
 
-      {/* Action detail viewer */}
-      <Dialog open={actionDetailOpen} onOpenChange={setActionDetailOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>
-              {actionTypeLabel(String(selectedAction?.type || ""))} details
-            </DialogTitle>
-            <DialogDescription>
-              Status: {String(selectedAction?.status || "-")} • Effective:{" "}
-              {selectedAction?.effectiveDate
-                ? format(new Date(selectedAction.effectiveDate), "PPP")
-                : "-"}
-            </DialogDescription>
-          </DialogHeader>
-
-          {(() => {
-            const a = selectedAction;
-            const p: any = a?.payload || {};
-            if (!a) return null;
-
-            const Row = ({
-              label,
-              value,
-            }: {
-              label: string;
-              value: any;
-            }) => (
-              <div className="flex items-start justify-between gap-4">
-                <div className="text-sm text-muted-foreground">{label}</div>
-                <div className="text-sm font-medium text-right break-words">
-                  {value ?? "-"}
-                </div>
-              </div>
-            );
-
-            if (a.type === "PROMOTION") {
-              return (
-                <div className="space-y-3">
-                  <Row
-                    label="Reason"
-                    value={
-                      p.promotionReason
-                        ? String(p.promotionReason).replace(/_/g, " ")
-                        : "-"
-                    }
-                  />
-                  <Row
-                    label="Job position"
-                    value={nameById(lookupData.positions as any, p.toPositionId)}
-                  />
-                  <Row
-                    label="Department"
-                    value={nameById(
-                      lookupData.departments as any,
-                      p.toDepartmentId,
-                    )}
-                  />
-                  <Row
-                    label="Branch"
-                    value={nameById(lookupData.branches as any, p.toBranchId)}
-                  />
-                  <Row
-                    label="Duty station"
-                    value={
-                      p.toDutyStationId
-                        ? nameById(
-                            lookupData.branches as any,
-                            p.toDutyStationId,
-                          )
-                        : "-"
-                    }
-                  />
-                  <Row
-                    label="Grade"
-                    value={nameById(lookupData.grades as any, p.toGradeId)}
-                  />
-                  <Row
-                    label="Scale"
-                    value={nameById(lookupData.scales as any, p.toScaleId)}
-                  />
-                  <Row
-                    label="Basic salary"
-                    value={
-                      typeof p.newBasicSalary === "number"
-                        ? `${employee?.currency || "ETB"} ${Number(p.newBasicSalary).toLocaleString()}`
-                        : "-"
-                    }
-                  />
-                  <Row label="Note" value={p.note || "-"} />
-                </div>
-              );
-            }
-
-            if (a.type === "SALARY_INCREMENT") {
-              return (
-                <div className="space-y-3">
-                  <Row
-                    label="Mode"
-                    value={
-                      p.incrementMode
-                        ? String(p.incrementMode).replace(/_/g, " ")
-                        : "-"
-                    }
-                  />
-                  <Row
-                    label="Old salary"
-                    value={
-                      typeof p.oldBasicSalary === "number"
-                        ? `${employee?.currency || "ETB"} ${Number(p.oldBasicSalary).toLocaleString()}`
-                        : "-"
-                    }
-                  />
-                  <Row
-                    label="Incremented amount"
-                    value={
-                      typeof p.incrementedAmount === "number"
-                        ? `${employee?.currency || "ETB"} ${Number(p.incrementedAmount).toLocaleString()}`
-                        : "-"
-                    }
-                  />
-                  <Row
-                    label="New salary"
-                    value={
-                      typeof p.newBasicSalary === "number"
-                        ? `${employee?.currency || "ETB"} ${Number(p.newBasicSalary).toLocaleString()}`
-                        : "-"
-                    }
-                  />
-                  <Row
-                    label="Scale"
-                    value={
-                      p.toScaleId
-                        ? nameById(lookupData.scales as any, p.toScaleId)
-                        : "-"
-                    }
-                  />
-                  <Row label="Reason" value={p.reason || "-"} />
-                </div>
-              );
-            }
-
-            if (a.type === "TERMINATION") {
-              return (
-                <div className="space-y-3">
-                  <Row
-                    label="Application date"
-                    value={
-                      p.applicationDate
-                        ? format(new Date(p.applicationDate), "PPP")
-                        : "-"
-                    }
-                  />
-                  <Row
-                    label="Resignation date"
-                    value={
-                      p.resignationDate
-                        ? format(new Date(p.resignationDate), "PPP")
-                        : "-"
-                    }
-                  />
-                  <Row
-                    label="Reason"
-                    value={
-                      terminationReasonById(p.reasonId) ||
-                      (p.reasonId ? `ReasonId: ${p.reasonId}` : "-")
-                    }
-                  />
-                  <Row
-                    label="Notice days"
-                    value={
-                      typeof p.noticeDays === "number" ? p.noticeDays : 60
-                    }
-                  />
-                  <Row label="Remark" value={p.remark || "-"} />
-                </div>
-              );
-            }
-
-            if (a.type === "REINSTATE") {
-              const lt = p.lastTermination;
-              const ltDate = lt?.effectiveDate
-                ? format(new Date(lt.effectiveDate), "PPP")
-                : null;
-              const ltReason =
-                lt?.payload?.reasonId && terminationReasonById(lt.payload.reasonId);
-
-              return (
-                <div className="space-y-3">
-                  <Row
-                    label="Last termination"
-                    value={
-                      ltDate
-                        ? `${ltDate}${ltReason ? ` • ${ltReason}` : ""}`
-                        : "-"
-                    }
-                  />
-                  <Row
-                    label="Reinstate date"
-                    value={
-                      p.reinstateDate
-                        ? format(new Date(p.reinstateDate), "PPP")
-                        : a.effectiveDate
-                          ? format(new Date(a.effectiveDate), "PPP")
-                          : "-"
-                    }
-                  />
-                  <Row label="Remark" value={p.remark || "-"} />
-                </div>
-              );
-            }
-
-            return (
-              <div className="text-sm text-muted-foreground">
-                No detail view available for this action type.
-              </div>
-            );
-          })()}
-        </DialogContent>
-      </Dialog>
+      <ActionDetailDialog
+        open={actionDetailOpen}
+        onOpenChange={setActionDetailOpen}
+        action={selectedAction}
+        currency={employee?.currency || "ETB"}
+        lookupData={lookupData}
+        terminationReasons={terminationReasons}
+      />
     </div>
   );
 }
