@@ -56,14 +56,7 @@ const userFormSchema = z.object({
   firstName: z.string().min(1, "Required"),
   lastName: z.string().min(1, "Required"),
   phone: z.string().optional(),
-  role: z.enum([
-    "SUPER_ADMIN",
-    "ADMIN",
-    "MANAGER",
-    "EMPLOYEE",
-    "HR",
-    "ACCOUNTANT",
-  ]),
+  role: z.string().min(1, "Required"),
   isActive: z.boolean().default(true),
 });
 
@@ -74,6 +67,7 @@ export default function UsersPage() {
   const {
     users,
     roles,
+    systemRoles,
     loading,
     dialogLoading,
     pagination,
@@ -88,6 +82,8 @@ export default function UsersPage() {
     setIsDeleteDialogOpen,
     setSelectedRoleId,
     handleSearch,
+    handleRoleChange,
+    handleStatusChange,
     handleCreateUser,
     handleEditUser,
     handleAssignRole,
@@ -312,22 +308,24 @@ export default function UsersPage() {
               />
             </div>
 
-            <Select value={filters.role} onValueChange={handleRoleAssign}>
+            <Select value={filters.role} onValueChange={handleRoleChange}>
               <SelectTrigger className="w-[150px]">
                 <SelectValue placeholder="Role" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All</SelectItem>
-                <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
-                <SelectItem value="ADMIN">Admin</SelectItem>
-                <SelectItem value="MANAGER">Manager</SelectItem>
-                <SelectItem value="HR">HR</SelectItem>
-                <SelectItem value="ACCOUNTANT">Accountant</SelectItem>
-                <SelectItem value="EMPLOYEE">Employee</SelectItem>
+                {(systemRoles.length
+                  ? systemRoles
+                  : ["SUPER_ADMIN", "ADMIN", "MANAGER", "HR", "ACCOUNTANT", "EMPLOYEE"]
+                ).map((r) => (
+                  <SelectItem key={r} value={r}>
+                    {String(r).replace(/_/g, " ")}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
-            <Select value={filters.status} onValueChange={handleAssignRole}>
+            <Select value={filters.status} onValueChange={handleStatusChange}>
               <SelectTrigger className="w-[150px]">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
@@ -448,10 +446,14 @@ export default function UsersPage() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
-                        <SelectItem value="ADMIN">Admin</SelectItem>
-                        <SelectItem value="MANAGER">Manager</SelectItem>
-                        <SelectItem value="EMPLOYEE">Employee</SelectItem>
+                        {(systemRoles.length
+                          ? systemRoles
+                          : ["SUPER_ADMIN", "ADMIN", "MANAGER", "HR", "ACCOUNTANT", "EMPLOYEE"]
+                        ).map((r) => (
+                          <SelectItem key={r} value={r}>
+                            {String(r).replace(/_/g, " ")}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </FormItem>

@@ -8,6 +8,7 @@ export const useUserManagement = () => {
 
   const [users, setUsers] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
+  const [systemRoles, setSystemRoles] = useState<string[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [rolesLoading, setRolesLoading] = useState(true);
@@ -145,6 +146,23 @@ export const useUserManagement = () => {
     };
 
     loadRoles();
+  }, []);
+
+  /*
+  ==============================
+  FETCH SYSTEM ROLE ENUMS (ONCE)
+  ==============================
+  */
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await api.get<any>("/meta/security");
+        const list = res?.data?.roles ?? res?.roles ?? [];
+        setSystemRoles(Array.isArray(list) ? list : []);
+      } catch {
+        setSystemRoles([]);
+      }
+    })();
   }, []);
 
   /*
@@ -329,7 +347,7 @@ export const useUserManagement = () => {
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.response?.data?.message || "Operation failed",
+        description: error?.message || "Operation failed",
         variant: "destructive",
       });
     } finally {
@@ -370,6 +388,7 @@ export const useUserManagement = () => {
   return {
     users,
     roles,
+    systemRoles,
     loading,
     rolesLoading,
     dialogLoading,
