@@ -32,7 +32,14 @@ import {
 } from "@/components/ui/sidebar";
 import api from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
-import { Bell, Search, KeyRound, LogOut, User as UserIcon } from "lucide-react";
+import {
+  Bell,
+  Search,
+  KeyRound,
+  LogOut,
+  User as UserIcon,
+  X,
+} from "lucide-react";
 import { Link, Outlet, useNavigate } from "react-router";
 import { useState, useEffect } from "react";
 import { getCompanyLogoUrl } from "@/services/company-branding";
@@ -59,6 +66,14 @@ type CurrentUser = {
   } | null;
 };
 
+type NavItem = {
+  id?: string;
+  title?: string | null;
+  path?: string | null;
+  isActive?: boolean | null;
+  children?: NavItem[] | null;
+};
+
 export default function DashboardLayout() {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -66,6 +81,11 @@ export default function DashboardLayout() {
   const [meLoading, setMeLoading] = useState(true);
   const [me, setMe] = useState<CurrentUser | null>(null);
   const [logoUrl, setLogoUrl] = useState<string>("/mk_logo.png");
+
+  const [navItems, setNavItems] = useState<NavItem[]>([]);
+  const [navLoading, setNavLoading] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const [pwdOpen, setPwdOpen] = useState(false);
   const [pwdSaving, setPwdSaving] = useState(false);
@@ -102,6 +122,25 @@ export default function DashboardLayout() {
     setLogoUrl(getCompanyLogoUrl("/mk_logo.png"));
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        setNavLoading(true);
+        const navRes = await api.get<any>("/navigation");
+        const items = navRes?.data?.items ?? navRes?.items ?? [];
+        if (!cancelled) setNavItems(Array.isArray(items) ? items : []);
+      } catch {
+        if (!cancelled) setNavItems([]);
+      } finally {
+        if (!cancelled) setNavLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const handleLogout = () => {
     (async () => {
       try {
@@ -130,6 +169,53 @@ export default function DashboardLayout() {
   };
 
   const openProfile = () => navigate("/my-profile");
+
+  const normalizePath = (path: string): string => {
+    if (!path) return "/";
+    if (!path.startsWith("/")) return `/${path}`;
+    return path.replace(/^\/+/, "/");
+  };
+
+  const flattenNav = (items: NavItem[]): Array<{ title: string; path: string }> => {
+    const out: Array<{ title: string; path: string }> = [];
+    const walk = (arr: NavItem[]) => {
+      for (const it of arr || []) {
+        if (!it) continue;
+        if (it.isActive === false) continue;
+        const title = String(it.title ?? "").trim();
+        const path = String(it.path ?? "").trim();
+        if (title && path) out.push({ title, path: normalizePath(path) });
+        if (Array.isArray(it.children) && it.children.length) walk(it.children);
+      }
+    };
+    walk(items);
+    return out;
+  };
+
+  const navFlat = flattenNav(navItems);
+  const searchText = searchQuery.trim().toLowerCase();
+  const searchResults = searchText
+    ? navFlat
+        .filter(
+          (i) =>
+            i.title.toLowerCase().includes(searchText) ||
+            i.path.toLowerCase().includes(searchText),
+        )
+        .slice(0, 10)
+    : [];
+
+  const goToResult = (path: string) => {
+    const p = normalizePath(path);
+    setSearchOpen(false);
+    setSearchQuery("");
+    navigate(p);
+  };
+
+  const submitSearch = () => {
+    if (searchResults.length > 0) {
+      goToResult(searchResults[0].path);
+    }
+  };
 
   const openChangePassword = () => {
     setPwdForm({ oldPassword: "", newPassword: "", confirmPassword: "" });
@@ -170,13 +256,13 @@ export default function DashboardLayout() {
 
       <SidebarInset className="w-full">
         {/* HEADER */}
-        <header className="flex h-20 items-center bg-primary text-white border-b">
-          <div className="flex w-full items-center gap-4 px-4">
-            <SidebarTrigger className="bg-secondary hover:bg-secondary/90 text-primary w-10 h-10" />
+        <header className="bg-primary text-white border-b">
+          <div className="flex w-full items-center gap-3 px-3 sm:px-4 h-16 sm:h-20">
+            <SidebarTrigger className="bg-secondary hover:bg-secondary/90 text-primary w-10 h-10 shrink-0" />
 
             <Separator
               orientation="vertical"
-              className="h-16 w-px bg-white/30"
+              className="hidden sm:block h-12 sm:h-16 w-px bg-white/30"
             />
 
             {/* LOGO */}
@@ -185,32 +271,76 @@ export default function DashboardLayout() {
                 <img
                   src={logoUrl}
                   alt="mk logo"
-                  className="w-14 h-14"
+                  className="w-10 h-10 sm:w-14 sm:h-14 object-contain"
                 />
               </Link>
             </SidebarHeader>
 
             {/* SEARCH */}
-            <InputGroup className="ml-6 w-full max-w-xl">
-              <InputGroupInput
-                placeholder="Search..."
-                className="bg-white/10 border-white/30 text-white placeholder:text-white/70"
-              />
+            <div className="hidden md:block ml-4 w-full max-w-xl relative">
+              <InputGroup>
+                <InputGroupInput
+                  placeholder="Search menus..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      submitSearch();
+                    }
+                  }}
+                  className="bg-white/10 border-white/30 text-white placeholder:text-white/70"
+                />
 
-              <InputGroupAddon className="text-white">
-                <Search size={18} />
-              </InputGroupAddon>
+                <InputGroupAddon className="text-white">
+                  <Search size={18} />
+                </InputGroupAddon>
 
-              <InputGroupAddon
-                align="inline-end"
-                className="text-white/70 text-sm"
-              >
-                12 results
-              </InputGroupAddon>
-            </InputGroup>
+                <InputGroupAddon
+                  align="inline-end"
+                  className="text-white/70 text-sm"
+                >
+                  {navLoading
+                    ? "…"
+                    : searchText
+                      ? `${searchResults.length} results`
+                      : ""}
+                </InputGroupAddon>
+              </InputGroup>
+
+              {searchText && searchResults.length > 0 && (
+                <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-50 rounded-md border border-white/20 bg-white text-foreground shadow-lg overflow-hidden">
+                  {searchResults.map((r) => (
+                    <button
+                      key={`${r.path}-${r.title}`}
+                      type="button"
+                      onClick={() => goToResult(r.path)}
+                      className="w-full text-left px-3 py-2 hover:bg-muted flex items-center justify-between gap-3"
+                    >
+                      <span className="font-medium">{r.title}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {r.path}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* RIGHT SIDE */}
-            <div className="ml-auto flex items-center gap-4">
+            <div className="ml-auto flex items-center gap-2 sm:gap-4">
+              {/* Mobile search */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="md:hidden text-white hover:bg-white/20"
+                onClick={() => setSearchOpen(true)}
+                aria-label="Search"
+                title="Search"
+              >
+                <Search />
+              </Button>
+
               {/* Notifications */}
               <Button
                 variant="ghost"
@@ -264,6 +394,70 @@ export default function DashboardLayout() {
             </div>
           </div>
         </header>
+
+        {/* Mobile search dialog */}
+        <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Search</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="Search menus..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      submitSearch();
+                    }
+                  }}
+                  autoFocus
+                />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => {
+                    setSearchQuery("");
+                  }}
+                  aria-label="Clear search"
+                  title="Clear"
+                >
+                  <X className="size-4" />
+                </Button>
+              </div>
+
+              {searchText && (
+                <div className="text-sm text-muted-foreground">
+                  {navLoading ? "Loading..." : `${searchResults.length} results`}
+                </div>
+              )}
+
+              <div className="max-h-[45vh] overflow-auto rounded-md border">
+                {searchText && searchResults.length === 0 ? (
+                  <div className="p-3 text-sm text-muted-foreground">
+                    No results
+                  </div>
+                ) : (
+                  searchResults.map((r) => (
+                    <button
+                      key={`${r.path}-${r.title}`}
+                      type="button"
+                      onClick={() => goToResult(r.path)}
+                      className="w-full text-left px-3 py-2 hover:bg-muted flex flex-col gap-0.5"
+                    >
+                      <span className="font-medium">{r.title}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {r.path}
+                      </span>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Change password dialog */}
         <Dialog open={pwdOpen} onOpenChange={setPwdOpen}>
