@@ -5,7 +5,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
-import { Plus, Trash2, Briefcase, Calendar } from "lucide-react";
+import { Plus, Trash2, Briefcase } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -26,28 +26,57 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import api from "@/lib/api";
 
-const experienceSchema = z.object({
-  id: z.string().optional(),
-  company: z.string().min(1, "Company name is required"),
-  position: z.string().min(1, "Position is required"),
-  startDate: z.date(),
-  endDate: z.date().optional(),
-  current: z.boolean().default(false),
-  description: z.string().optional(),
-  achievements: z.string().optional(),
-});
+const experienceSchema = z
+  .object({
+    id: z.string().optional(),
+    company: z.string().optional(),
+    position: z.string().optional(),
+    startDate: z.date().optional(),
+    endDate: z.date().optional(),
+    current: z.boolean().default(false),
+    description: z.string().nullable().optional(),
+    achievements: z.string().nullable().optional(),
+  })
+  .superRefine((val, ctx) => {
+    const company = (val.company || "").trim();
+    const position = (val.position || "").trim();
+    const hasAny =
+      company.length > 0 ||
+      position.length > 0 ||
+      !!val.startDate ||
+      !!val.endDate ||
+      !!val.description ||
+      !!val.achievements;
+    if (!hasAny) return; // allow completely empty rows
+
+    if (!company) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["company"],
+        message: "Company name is required",
+      });
+    }
+    if (!position) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["position"],
+        message: "Position is required",
+      });
+    }
+    if (!val.startDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["startDate"],
+        message: "Start date is required",
+      });
+    }
+  });
 
 const experiencesFormSchema = z.object({
   experiences: z.array(experienceSchema),
@@ -69,6 +98,12 @@ export const ExperienceTab = ({
   const { toast } = useToast();
   const [, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const dateToInput = (d?: Date) => (d ? format(d, "yyyy-MM-dd") : "");
+  const inputToDate = (v: string) => {
+    if (!v) return undefined;
+    const d = new Date(`${v}T00:00:00`);
+    return Number.isNaN(d.getTime()) ? undefined : d;
+  };
 
   const form = useForm<ExperiencesFormValues>({
     resolver: zodResolver(experiencesFormSchema) as any,
@@ -80,6 +115,7 @@ export const ExperienceTab = ({
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "experiences",
+    keyName: "fieldId",
   });
 
   const handleRemove = async (index: number) => {
@@ -122,6 +158,8 @@ export const ExperienceTab = ({
           ...exp,
           startDate: exp.startDate ? new Date(exp.startDate) : undefined,
           endDate: exp.endDate ? new Date(exp.endDate) : undefined,
+          description: exp.description ?? "",
+          achievements: exp.achievements ?? "",
         }));
         form.reset({ experiences: formatted });
       } else {
@@ -165,9 +203,23 @@ export const ExperienceTab = ({
 
     setSaving(true);
     try {
+      toast({ title: "Saving…", description: "Please wait" });
       // Format dates for API
+      const nonEmpty = data.experiences.filter((exp: any) => {
+        const company = String(exp.company || "").trim();
+        const position = String(exp.position || "").trim();
+        return company.length > 0 || position.length > 0 || !!exp.startDate || !!exp.endDate;
+      });
+      if (nonEmpty.length === 0) {
+        toast({
+          title: "Nothing to save",
+          description: "Add at least one experience record.",
+          variant: "destructive",
+        });
+        return;
+      }
       const payload = {
-        experiences: data.experiences.map((exp) => ({
+        experiences: nonEmpty.map((exp) => ({
           ...exp,
           startDate: exp.startDate
             ? format(exp.startDate, "yyyy-MM-dd")
@@ -203,6 +255,41 @@ export const ExperienceTab = ({
     }
   };
 
+  const handleInvalid = () => {
+    const errs: any = form.formState.errors;
+    const rows = Array.isArray(errs?.experiences) ? errs.experiences : [];
+
+    // Find the first concrete field error and show it with row index.
+    let msg: string | null = null;
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      const m = r?.company?.message || r?.position?.message || r?.startDate?.message;
+      if (m) {
+        msg = `Row ${i + 1}: ${m}`;
+        break;
+      }
+    }
+
+    // Fallback: stringify error keys for debugging (short).
+    if (!msg) {
+      try {
+        const compact = JSON.stringify(errs)?.slice(0, 500);
+        msg =
+          compact && compact.length > 0
+            ? `Validation details: ${compact}`
+            : "Please fill required fields (Company, Position, Start Date).";
+      } catch {
+        msg = "Please fill required fields (Company, Position, Start Date).";
+      }
+    }
+
+    toast({
+      title: "Missing/invalid fields",
+      description: msg,
+      variant: "destructive",
+    });
+  };
+
   if (!employeeId) {
     return (
       <Card>
@@ -230,7 +317,7 @@ export const ExperienceTab = ({
       <CardContent>
         <Form {...form}>
           <form
-            onSubmit={form.handleSubmit(handleSubmit)}
+            onSubmit={form.handleSubmit(handleSubmit, handleInvalid)}
             className="space-y-6"
           >
             {fields.length === 0 ? (
@@ -241,7 +328,7 @@ export const ExperienceTab = ({
               <div className="space-y-6">
                 {fields.map((field, index) => (
                   <div
-                    key={field.id}
+                    key={(field as any).fieldId}
                     className="space-y-4 p-4 border rounded-lg relative"
                   >
                     <Button
@@ -291,35 +378,18 @@ export const ExperienceTab = ({
                         render={({ field }) => (
                           <FormItem className="flex flex-col">
                             <FormLabel>Start Date *</FormLabel>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <FormControl>
-                                  <Button
-                                    variant="outline"
-                                    className={cn(
-                                      "w-full pl-3 text-left font-normal",
-                                      !field.value && "text-muted-foreground",
-                                    )}
-                                  >
-                                    {field.value
-                                      ? format(field.value, "PPP")
-                                      : "Pick a date"}
-                                    <Calendar className="ml-auto h-4 w-4 opacity-50" />
-                                  </Button>
-                                </FormControl>
-                              </PopoverTrigger>
-                              <PopoverContent
-                                className="w-auto p-0"
-                                align="start"
-                              >
-                                <CalendarComponent
-                                  mode="single"
-                                  selected={field.value}
-                                  onSelect={field.onChange}
-                                  initialFocus
-                                />
-                              </PopoverContent>
-                            </Popover>
+                            <FormControl>
+                              <Input
+                                type="date"
+                                name={field.name}
+                                ref={field.ref}
+                                onBlur={field.onBlur}
+                                value={dateToInput(field.value)}
+                                onChange={(e) =>
+                                  field.onChange(inputToDate(e.target.value))
+                                }
+                              />
+                            </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -331,39 +401,19 @@ export const ExperienceTab = ({
                         render={({ field }) => (
                           <FormItem className="flex flex-col">
                             <FormLabel>End Date</FormLabel>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <FormControl>
-                                  <Button
-                                    variant="outline"
-                                    className={cn(
-                                      "w-full pl-3 text-left font-normal",
-                                      !field.value && "text-muted-foreground",
-                                    )}
-                                    disabled={form.watch(
-                                      `experiences.${index}.current`,
-                                    )}
-                                  >
-                                    {field.value
-                                      ? format(field.value, "PPP")
-                                      : "Pick a date"}
-                                    <Calendar className="ml-auto h-4 w-4 opacity-50" />
-                                  </Button>
-                                </FormControl>
-                              </PopoverTrigger>
-                              <PopoverContent
-                                className="w-auto p-0"
-                                align="start"
-                              >
-                                <CalendarComponent
-                                  mode="single"
-                                  selected={field.value}
-                                  onSelect={field.onChange}
-                                  disabled={(date) => date > new Date()}
-                                  initialFocus
-                                />
-                              </PopoverContent>
-                            </Popover>
+                            <FormControl>
+                              <Input
+                                type="date"
+                                name={field.name}
+                                ref={field.ref}
+                                onBlur={field.onBlur}
+                                disabled={!!form.watch(`experiences.${index}.current`)}
+                                value={dateToInput(field.value)}
+                                onChange={(e) =>
+                                  field.onChange(inputToDate(e.target.value))
+                                }
+                              />
+                            </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -379,8 +429,9 @@ export const ExperienceTab = ({
                             <Checkbox
                               checked={field.value}
                               onCheckedChange={(checked) => {
-                                field.onChange(checked);
-                                if (checked) {
+                                const v = checked === true;
+                                field.onChange(v);
+                                if (v) {
                                   form.setValue(
                                     `experiences.${index}.endDate`,
                                     undefined,

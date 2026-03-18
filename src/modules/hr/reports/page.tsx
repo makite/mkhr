@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useMemo } from "react";
-import { type ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
 import {
   FileText,
@@ -13,6 +12,10 @@ import {
   Briefcase,
   GraduationCap,
   FileDown,
+  Settings2,
+  ChevronUp,
+  ChevronDown,
+  RotateCcw,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -25,96 +28,175 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { DataTable } from "@/components/shared/table-data";
 import { useToast } from "@/hooks/use-toast";
 import api from "@/lib/api";
 
+import type { ReportRow, EmployeeRow, ExperienceRow } from "./report-types";
+import {
+  type ReportType,
+  buildColumnDef,
+  mergeColumnLayout,
+  REPORT_DEFAULT_COLUMN_IDS,
+  COLUMN_LABELS,
+  safeStr,
+  formatDateSafe,
+} from "./report-columns";
+
 const REPORT_TYPES = [
-  { value: "all", label: "All Employees", icon: Users },
-  { value: "terminated", label: "Terminated", icon: UserX },
-  { value: "promoted", label: "Promoted", icon: TrendingUp },
-  { value: "experience", label: "Experience (Internal & External)", icon: Briefcase },
-  { value: "education", label: "Education", icon: GraduationCap },
-  { value: "employment-letter", label: "Employment Letter", icon: FileText },
+  { value: "all" as const, label: "All Employees", icon: Users },
+  { value: "terminated" as const, label: "Terminated", icon: UserX },
+  { value: "promoted" as const, label: "Promoted", icon: TrendingUp },
+  { value: "experience" as const, label: "Experience (Internal & External)", icon: Briefcase },
+  { value: "education" as const, label: "Education", icon: GraduationCap },
+  { value: "employment-letter" as const, label: "Employment Letter", icon: FileText },
 ] as const;
 
-type ReportType = (typeof REPORT_TYPES)[number]["value"];
+const LETTER_TYPES: ReportType[] = ["experience", "employment-letter", "promoted"];
 
-/** Safe display value: never render an object as React child */
-function safeStr(v: any): string {
-  if (v == null) return "-";
-  if (typeof v === "object") return String((v as any).name ?? (v as any).code ?? (v as any).value ?? "-");
-  if (typeof v === "boolean") return v ? "Yes" : "No";
-  return String(v);
-}
+const STORAGE_KEY = "mkhr-hr-report-custom-v1";
 
-function formatDateSafe(value: unknown, fmt: string): string {
-  if (value == null || value === "") return "-";
-  const d = value instanceof Date ? value : new Date(value as string | number);
-  if (Number.isNaN(d.getTime())) return "-";
+type StoredLayout = {
+  order: string[];
+  visible: Record<string, boolean>;
+  dateFrom: string;
+  dateTo: string;
+  textFilter: string;
+};
+
+function readStored(rt: ReportType): StoredLayout {
   try {
-    return format(d, fmt);
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      const { order, visible } = mergeColumnLayout(rt, null, null);
+      return { order, visible, dateFrom: "", dateTo: "", textFilter: "" };
+    }
+    const all = JSON.parse(raw) as Record<string, Partial<StoredLayout>>;
+    const p = all[rt] || {};
+    const { order, visible } = mergeColumnLayout(rt, p.order, p.visible);
+    return {
+      order,
+      visible,
+      dateFrom: typeof p.dateFrom === "string" ? p.dateFrom : "",
+      dateTo: typeof p.dateTo === "string" ? p.dateTo : "",
+      textFilter: typeof p.textFilter === "string" ? p.textFilter : "",
+    };
   } catch {
-    return "-";
+    const { order, visible } = mergeColumnLayout(rt, null, null);
+    return { order, visible, dateFrom: "", dateTo: "", textFilter: "" };
   }
 }
 
-interface EmployeeRow {
-  id: string;
-  employeeId?: string;
-  firstName?: string;
-  lastName?: string;
-  requestStatus?: string;
-  empStatus?: string;
-  createdAt?: string;
-  positionRef?: { name?: string } | null;
-  grade?: { name?: string } | null;
-  branch?: { name?: string } | null;
-  department?: { name?: string } | null;
+function persistLayout(rt: ReportType, s: StoredLayout) {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const all = raw ? (JSON.parse(raw) as Record<string, StoredLayout>) : {};
+    all[rt] = s;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+  } catch {
+    /* ignore */
+  }
 }
 
-interface ExperienceRow {
-  id: string;
-  employeeId: string;
-  employeeName: string;
-  department?: string | null;
-  position?: string | null;
-  company: string;
-  experiencePosition: string;
-  startDate: string;
-  endDate?: string | null;
-  current?: boolean;
-  description?: string | null;
-  achievements?: string | null;
+function rowMatchesText(row: any, q: string): boolean {
+  if (!q.trim()) return true;
+  const needle = q.trim().toLowerCase();
+  const walk = (v: any): string => {
+    if (v == null) return "";
+    if (typeof v === "object" && !Array.isArray(v))
+      return Object.values(v)
+        .map(walk)
+        .join(" ");
+    if (Array.isArray(v)) return v.map(walk).join(" ");
+    return String(v).toLowerCase();
+  };
+  return walk(row).includes(needle);
 }
 
-interface EducationRow {
-  id: string;
-  employeeId: string;
-  employeeName: string;
-  department?: string | null;
-  position?: string | null;
-  institution: string;
-  degree: string;
-  field: string;
-  startDate: string;
-  endDate?: string | null;
-  current?: boolean;
-  grade?: string | null;
+function rowInDateRange(
+  row: any,
+  reportType: ReportType,
+  dateFrom: string,
+  dateTo: string,
+): boolean {
+  if (!dateFrom && !dateTo) return true;
+  let t: number | null = null;
+  if (reportType === "experience" || reportType === "education") {
+    if (row.startDate) {
+      const d = new Date(row.startDate).getTime();
+      t = Number.isNaN(d) ? null : d;
+    }
+  } else if (row.createdAt) {
+    const d = new Date(row.createdAt).getTime();
+    t = Number.isNaN(d) ? null : d;
+  }
+  if (t == null) return true;
+  if (dateFrom) {
+    const from = new Date(dateFrom);
+    from.setHours(0, 0, 0, 0);
+    if (t < from.getTime()) return false;
+  }
+  if (dateTo) {
+    const to = new Date(dateTo);
+    to.setHours(23, 59, 59, 999);
+    if (t > to.getTime()) return false;
+  }
+  return true;
 }
-
-type ReportRow = EmployeeRow | ExperienceRow | EducationRow;
-
-const LETTER_TYPES: ReportType[] = ["experience", "employment-letter", "promoted"];
 
 export default function HRReportsPage() {
   const { toast } = useToast();
   const [reportType, setReportType] = useState<ReportType>("all");
+  const initial = readStored("all");
+  const [columnOrder, setColumnOrder] = useState<string[]>(() => initial.order);
+  const [columnVisible, setColumnVisible] = useState<Record<string, boolean>>(
+    () => initial.visible,
+  );
+  const [dateFrom, setDateFrom] = useState(() => initial.dateFrom);
+  const [dateTo, setDateTo] = useState(() => initial.dateTo);
+  const [textFilter, setTextFilter] = useState(() => initial.textFilter);
+  const [customizeOpen, setCustomizeOpen] = useState(false);
+
   const [viewMode, setViewMode] = useState<"table" | "print">("table");
   const [data, setData] = useState<ReportRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [pagination, setPagination] = useState({ page: 1, limit: 50, total: 0, pages: 0 });
   const [letterEmployeeIndex, setLetterEmployeeIndex] = useState(0);
+
+  const handleReportTypeChange = (next: ReportType) => {
+    persistLayout(reportType, {
+      order: columnOrder,
+      visible: columnVisible,
+      dateFrom,
+      dateTo,
+      textFilter,
+    });
+    const L = readStored(next);
+    setReportType(next);
+    setColumnOrder(L.order);
+    setColumnVisible(L.visible);
+    setDateFrom(L.dateFrom);
+    setDateTo(L.dateTo);
+    setTextFilter(L.textFilter);
+  };
+
+  useEffect(() => {
+    persistLayout(reportType, {
+      order: columnOrder,
+      visible: columnVisible,
+      dateFrom,
+      dateTo,
+      textFilter,
+    });
+  }, [reportType, columnOrder, columnVisible, dateFrom, dateTo, textFilter]);
 
   const fetchReport = async (page = 1) => {
     setLoading(true);
@@ -149,54 +231,76 @@ export default function HRReportsPage() {
     fetchReport(1);
   }, [reportType]);
 
-  const columns = useMemo((): ColumnDef<ReportRow>[] => {
-    if (reportType === "experience") {
-      return [
-        { id: "employeeName", header: "Employee", accessorFn: (r: any) => safeStr(r.employeeName), cell: ({ row }: any) => safeStr((row.original as any).employeeName) },
-        { id: "employeeId", header: "ID", accessorFn: (r: any) => safeStr(r.employeeId), cell: ({ row }: any) => safeStr((row.original as any).employeeId) },
-        { id: "department", header: "Department", accessorFn: (r: any) => safeStr(r.department), cell: ({ row }: any) => safeStr((row.original as any).department) },
-        { id: "company", header: "Company", accessorFn: (r: any) => safeStr(r.company), cell: ({ row }: any) => safeStr((row.original as any).company) },
-        { id: "experiencePosition", header: "Position", accessorFn: (r: any) => safeStr(r.experiencePosition), cell: ({ row }: any) => safeStr((row.original as any).experiencePosition) },
-        { id: "startDate", header: "Start", accessorFn: (r: any) => r.startDate, cell: ({ row }: any) => formatDateSafe((row.original as any).startDate, "PP") },
-        { id: "endDate", header: "End", accessorFn: (r: any) => (r as any).current ? "Current" : (r as any).endDate, cell: ({ row }: any) => (row.original as any).current ? "Current" : formatDateSafe((row.original as any).endDate, "PP") },
-      ];
-    }
-    if (reportType === "education") {
-      return [
-        { id: "employeeName", header: "Employee", accessorFn: (r: any) => safeStr(r.employeeName), cell: ({ row }: any) => safeStr((row.original as any).employeeName) },
-        { id: "employeeId", header: "ID", accessorFn: (r: any) => safeStr(r.employeeId), cell: ({ row }: any) => safeStr((row.original as any).employeeId) },
-        { id: "institution", header: "Institution", accessorFn: (r: any) => safeStr(r.institution), cell: ({ row }: any) => safeStr((row.original as any).institution) },
-        { id: "degree", header: "Degree", accessorFn: (r: any) => safeStr(r.degree), cell: ({ row }: any) => safeStr((row.original as any).degree) },
-        { id: "field", header: "Field", accessorFn: (r: any) => safeStr(r.field), cell: ({ row }: any) => safeStr((row.original as any).field) },
-        { id: "startDate", header: "Start", accessorFn: (r: any) => r.startDate, cell: ({ row }: any) => formatDateSafe((row.original as any).startDate, "PP") },
-        { id: "endDate", header: "End", accessorFn: (r: any) => (r as any).current ? "Current" : (r as any).endDate, cell: ({ row }: any) => (row.original as any).current ? "Current" : formatDateSafe((row.original as any).endDate, "PP") },
-      ];
-    }
-    return [
-      { id: "name", header: "Employee", accessorFn: (r: any) => safeStr(`${(r as any).firstName ?? ""} ${(r as any).lastName ?? ""}`.trim()), cell: ({ row }: any) => safeStr(`${(row.original as any).firstName ?? ""} ${(row.original as any).lastName ?? ""}`.trim()) },
-      { id: "employeeId", header: "Employee ID", accessorFn: (r: any) => safeStr((r as any).employeeId), cell: ({ row }: any) => safeStr((row.original as any).employeeId) },
-      { id: "position", header: "Position", accessorFn: (r: any) => safeStr((r as any).positionRef), cell: ({ row }: any) => safeStr((row.original as any).positionRef) },
-      { id: "branch", header: "Branch", accessorFn: (r: any) => safeStr((r as any).branch), cell: ({ row }: any) => safeStr((row.original as any).branch) },
-      { id: "status", header: "Status", accessorFn: (r: any) => safeStr((r as any).requestStatus), cell: ({ row }: any) => safeStr((row.original as any).requestStatus) },
-      { id: "employment", header: "Employment", accessorFn: (r: any) => (r as any).empStatus, cell: ({ row }: any) => (row.original as any).empStatus === "TERMINATED" ? "Terminated" : "Active" },
-      { id: "createdAt", header: "Created", accessorFn: (r: any) => (r as any).createdAt, cell: ({ row }: any) => formatDateSafe((row.original as any).createdAt, "PP") },
-    ];
-  }, [reportType]);
+  const filteredData = useMemo(() => {
+    return data.filter(
+      (row) =>
+        rowInDateRange(row as any, reportType, dateFrom, dateTo) &&
+        rowMatchesText(row as any, textFilter),
+    );
+  }, [data, reportType, dateFrom, dateTo, textFilter]);
+
+  const displayColumns = useMemo(() => {
+    const ids = columnOrder.filter(
+      (id) => columnVisible[id] !== false && REPORT_DEFAULT_COLUMN_IDS[reportType].includes(id),
+    );
+    const cols = ids
+      .map((id) => buildColumnDef(reportType, id))
+      .filter(Boolean) as any[];
+    return cols.length ? cols : [buildColumnDef(reportType, REPORT_DEFAULT_COLUMN_IDS[reportType][0])!];
+  }, [reportType, columnOrder, columnVisible]);
+
+  const moveColumn = (id: string, dir: -1 | 1) => {
+    setColumnOrder((prev) => {
+      const i = prev.indexOf(id);
+      if (i < 0) return prev;
+      const j = i + dir;
+      if (j < 0 || j >= prev.length) return prev;
+      const next = [...prev];
+      [next[i], next[j]] = [next[j], next[i]];
+      return next;
+    });
+  };
+
+  const setVisible = (id: string, checked: boolean) => {
+    setColumnVisible((prev) => {
+      const next = { ...prev, [id]: checked };
+      const defaults = REPORT_DEFAULT_COLUMN_IDS[reportType];
+      if (!defaults.some((d) => next[d] !== false)) {
+        next[defaults[0]] = true;
+      }
+      return next;
+    });
+  };
+
+  const resetLayout = () => {
+    const { order, visible } = mergeColumnLayout(reportType, null, null);
+    setColumnOrder(order);
+    setColumnVisible(visible);
+    setDateFrom("");
+    setDateTo("");
+    setTextFilter("");
+    toast({ title: "Layout reset", description: "Columns and filters reset for this report." });
+  };
 
   const reportTitle = REPORT_TYPES.find((r) => r.value === reportType)?.label ?? "Report";
   const showPrintAsLetter = LETTER_TYPES.includes(reportType);
+  const dateFilterLabel =
+    reportType === "experience" || reportType === "education"
+      ? "Filter by experience/education start date"
+      : "Filter by record created date";
 
-  const letterItems: ReportRow[] = reportType === "experience"
-    ? (() => {
-        const seen = new Set<string>();
-        return data.filter((r: any) => {
-          const key = `${r.employeeId}-${r.employeeName}`;
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
-      })()
-    : data;
+  const letterItems: ReportRow[] =
+    reportType === "experience"
+      ? (() => {
+          const seen = new Set<string>();
+          return filteredData.filter((r: any) => {
+            const key = `${r.employeeId}-${r.employeeName}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
+        })()
+      : filteredData;
 
   const handlePrint = () => {
     setViewMode("print");
@@ -204,10 +308,10 @@ export default function HRReportsPage() {
   };
 
   const exportToExcel = () => {
-    const headers = columns.map((c) => String(c.header));
-    const rows = data.map((row: any) =>
-      columns.map((col) => {
-        const val = col.accessorFn ? (col as any).accessorFn(row) : row[String(col.id)];
+    const headers = displayColumns.map((c) => String(c.header));
+    const rows = filteredData.map((row: any) =>
+      displayColumns.map((col: any) => {
+        const val = col.accessorFn ? col.accessorFn(row) : row[String(col.id)];
         if (val instanceof Date) return format(val, "yyyy-MM-dd");
         return safeStr(val);
       }),
@@ -223,26 +327,36 @@ export default function HRReportsPage() {
     a.download = `hr-report-${reportType}-${format(new Date(), "yyyy-MM-dd")}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    toast({ title: "Exported", description: "Report exported as CSV (opens in Excel)." });
+    toast({
+      title: "Exported",
+      description: "CSV matches visible columns and current filters.",
+    });
   };
 
-  const currentLetterItem = letterItems[Math.min(letterEmployeeIndex, letterItems.length - 1)];
+  const currentLetterItem = letterItems[Math.min(letterEmployeeIndex, Math.max(0, letterItems.length - 1))];
+
   const renderLetter = () => {
     const date = format(new Date(), "PPPP");
     if (reportType === "experience" && currentLetterItem) {
       const ex = currentLetterItem as ExperienceRow;
-      const experiences = reportType === "experience" ? data.filter((r: any) => r.employeeId === ex.employeeId && r.employeeName === ex.employeeName) as ExperienceRow[] : [];
+      const experiences = filteredData.filter(
+        (r: any) => r.employeeId === ex.employeeId && r.employeeName === ex.employeeName,
+      ) as ExperienceRow[];
       return (
         <div className="space-y-4 text-sm print:text-black">
           <p className="text-right">{date}</p>
           <h2 className="text-lg font-semibold">To Whom It May Concern</h2>
           <p className="leading-relaxed">
-            This is to certify that <strong>{safeStr(ex.employeeName)}</strong> (ID: {safeStr(ex.employeeId)}) has worked with our organization / has the following work experience:
+            This is to certify that <strong>{safeStr(ex.employeeName)}</strong> (ID:{" "}
+            {safeStr(ex.employeeId)}) has worked with our organization / has the following work
+            experience:
           </p>
           <ul className="list-disc pl-6 space-y-1">
             {experiences.slice(0, 20).map((exp, i) => (
               <li key={i}>
-                <strong>{safeStr(exp.company)}</strong> – {safeStr(exp.experiencePosition)} ({formatDateSafe(exp.startDate, "MMM yyyy")} – {exp.current ? "Present" : formatDateSafe(exp.endDate, "MMM yyyy")})
+                <strong>{safeStr(exp.company)}</strong> – {safeStr(exp.experiencePosition)} (
+                {formatDateSafe(exp.startDate, "MMM yyyy")} –{" "}
+                {exp.current ? "Present" : formatDateSafe(exp.endDate, "MMM yyyy")})
               </li>
             ))}
           </ul>
@@ -255,7 +369,9 @@ export default function HRReportsPage() {
             </div>
             <div>
               <p className="text-xs uppercase mb-1">Authorized / Stamp</p>
-              <div className="h-14 border border-black/30 rounded flex items-center justify-center text-xs">Stamp</div>
+              <div className="h-14 border border-black/30 rounded flex items-center justify-center text-xs">
+                Stamp
+              </div>
             </div>
           </div>
         </div>
@@ -271,7 +387,9 @@ export default function HRReportsPage() {
           <p className="text-right">{date}</p>
           <h2 className="text-lg font-semibold">EMPLOYMENT CONFIRMATION LETTER</h2>
           <p className="leading-relaxed">
-            This is to confirm that <strong>{name}</strong> (Employee ID: {safeStr(emp.employeeId)}) is employed with our organization in the capacity of <strong>{position || "N/A"}</strong>.
+            This is to confirm that <strong>{name}</strong> (Employee ID: {safeStr(emp.employeeId)})
+            is employed with our organization in the capacity of{" "}
+            <strong>{position || "N/A"}</strong>.
           </p>
           {branch && <p className="leading-relaxed">Branch / Department: {branch}</p>}
           <p className="leading-relaxed">This letter is issued for official purposes.</p>
@@ -283,7 +401,9 @@ export default function HRReportsPage() {
             </div>
             <div>
               <p className="text-xs uppercase mb-1">Authorized / Stamp</p>
-              <div className="h-14 border border-black/30 rounded flex items-center justify-center text-xs">Stamp</div>
+              <div className="h-14 border border-black/30 rounded flex items-center justify-center text-xs">
+                Stamp
+              </div>
             </div>
           </div>
         </div>
@@ -298,7 +418,9 @@ export default function HRReportsPage() {
           <p className="text-right">{date}</p>
           <h2 className="text-lg font-semibold">PROMOTION LETTER</h2>
           <p className="leading-relaxed">
-            We are pleased to inform you that <strong>{name}</strong> (Employee ID: {safeStr(emp.employeeId)}) has been promoted to <strong>{position || "the new position"}</strong>.
+            We are pleased to inform you that <strong>{name}</strong> (Employee ID:{" "}
+            {safeStr(emp.employeeId)}) has been promoted to{" "}
+            <strong>{position || "the new position"}</strong>.
           </p>
           <p className="leading-relaxed">This promotion is effective as per the approved records.</p>
           <div className="mt-12 pt-8 border-t border-dashed grid grid-cols-2 gap-8">
@@ -309,7 +431,9 @@ export default function HRReportsPage() {
             </div>
             <div>
               <p className="text-xs uppercase mb-1">Authorized / Stamp</p>
-              <div className="h-14 border border-black/30 rounded flex items-center justify-center text-xs">Stamp</div>
+              <div className="h-14 border border-black/30 rounded flex items-center justify-center text-xs">
+                Stamp
+              </div>
             </div>
           </div>
         </div>
@@ -323,7 +447,10 @@ export default function HRReportsPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">HR Reports</h1>
-          <p className="text-muted-foreground">Reports and letters: employees, terminated, promoted, experience, education, employment letter</p>
+          <p className="text-muted-foreground">
+            Customize columns, order, and filters — saved in this browser. Export uses visible
+            columns only.
+          </p>
         </div>
       </div>
 
@@ -332,9 +459,12 @@ export default function HRReportsPage() {
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              <CardTitle className="text-lg">Report type</CardTitle>
+              <CardTitle className="text-lg">{reportTitle}</CardTitle>
             </div>
-            <Select value={reportType} onValueChange={(v) => setReportType(v as ReportType)}>
+            <Select
+              value={reportType}
+              onValueChange={(v) => handleReportTypeChange(v as ReportType)}
+            >
               <SelectTrigger className="w-[280px]">
                 <SelectValue />
               </SelectTrigger>
@@ -364,16 +494,31 @@ export default function HRReportsPage() {
               </TabsList>
             </Tabs>
             <div className="flex gap-2 no-print">
-              <Button variant="outline" size="sm" onClick={() => fetchReport(pagination.page)} disabled={loading}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fetchReport(pagination.page)}
+                disabled={loading}
+              >
                 <RefreshCw className={`h-4 w-4 mr-1 ${loading ? "animate-spin" : ""}`} />
                 Refresh
               </Button>
-              <Button variant="outline" size="sm" onClick={exportToExcel} disabled={loading || data.length === 0}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={exportToExcel}
+                disabled={loading || filteredData.length === 0}
+              >
                 <FileDown className="h-4 w-4 mr-1" />
                 Export to Excel
               </Button>
               {showPrintAsLetter && (
-                <Button variant="outline" size="sm" onClick={handlePrint} disabled={data.length === 0}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePrint}
+                  disabled={filteredData.length === 0}
+                >
                   <Printer className="h-4 w-4 mr-1" />
                   Print letter
                 </Button>
@@ -381,17 +526,116 @@ export default function HRReportsPage() {
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {viewMode === "table" && (
+            <Collapsible open={customizeOpen} onOpenChange={setCustomizeOpen}>
+              <CollapsibleTrigger asChild>
+                <Button variant="secondary" size="sm" className="no-print gap-2">
+                  <Settings2 className="h-4 w-4" />
+                  Customize report
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="no-print mt-4 space-y-4 rounded-lg border bg-muted/30 p-4">
+                <p className="text-sm text-muted-foreground">
+                  Choose which columns appear, drag order with arrows, and set filters. Settings are
+                  remembered per report type on this device.
+                </p>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="rep-date-from">{dateFilterLabel} — from</Label>
+                    <Input
+                      id="rep-date-from"
+                      type="date"
+                      value={dateFrom}
+                      onChange={(e) => setDateFrom(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="rep-date-to">To</Label>
+                    <Input
+                      id="rep-date-to"
+                      type="date"
+                      value={dateTo}
+                      onChange={(e) => setDateTo(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="rep-text">Contains text (any field)</Label>
+                    <Input
+                      id="rep-text"
+                      placeholder="e.g. branch name, employee id…"
+                      value={textFilter}
+                      onChange={(e) => setTextFilter(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-medium">Columns</span>
+                  <Button type="button" variant="ghost" size="sm" onClick={resetLayout}>
+                    <RotateCcw className="h-4 w-4 mr-1" />
+                    Reset layout &amp; filters
+                  </Button>
+                </div>
+                <ul className="space-y-2 max-h-[240px] overflow-y-auto border rounded-md p-2 bg-background">
+                  {columnOrder.map((id) => {
+                    if (!REPORT_DEFAULT_COLUMN_IDS[reportType].includes(id)) return null;
+                    const label = COLUMN_LABELS[id] ?? id;
+                    return (
+                      <li
+                        key={id}
+                        className="flex items-center gap-2 flex-wrap py-1 border-b last:border-0"
+                      >
+                        <Checkbox
+                          id={`col-${id}`}
+                          checked={columnVisible[id] !== false}
+                          onCheckedChange={(c) => setVisible(id, c === true)}
+                        />
+                        <Label htmlFor={`col-${id}`} className="flex-1 cursor-pointer font-normal">
+                          {label}
+                        </Label>
+                        <div className="flex gap-1">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => moveColumn(id, -1)}
+                            aria-label="Move up"
+                          >
+                            <ChevronUp className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => moveColumn(id, 1)}
+                            aria-label="Move down"
+                          >
+                            <ChevronDown className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <p className="text-xs text-muted-foreground">
+                  Showing {filteredData.length} of {data.length} rows after filters.
+                </p>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
+
           {viewMode === "table" && (
             <DataTable<ReportRow>
-              data={data}
-              columns={columns}
+              data={filteredData}
+              columns={displayColumns}
               loading={loading}
               showPagination={true}
               pageSize={20}
               pageSizeOptions={[10, 20, 50, 100]}
               onRefresh={() => fetchReport(pagination.page)}
-              searchPlaceholder="Search..."
+              searchPlaceholder="Search in loaded data…"
             />
           )}
 
@@ -401,26 +645,31 @@ export default function HRReportsPage() {
                 <>
                   <div className="no-print flex items-center gap-4">
                     <span className="text-sm text-muted-foreground">Letter for:</span>
-                    <Select value={String(letterEmployeeIndex)} onValueChange={(v) => setLetterEmployeeIndex(Number(v))}>
+                    <Select
+                      value={String(letterEmployeeIndex)}
+                      onValueChange={(v) => setLetterEmployeeIndex(Number(v))}
+                    >
                       <SelectTrigger className="w-[280px]">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         {letterItems.map((item: any, i) => (
                           <SelectItem key={i} value={String(i)}>
-                            {reportType === "experience" ? safeStr(item.employeeName) : safeStr(`${item.firstName ?? ""} ${item.lastName ?? ""}`.trim())}
+                            {reportType === "experience"
+                              ? safeStr(item.employeeName)
+                              : safeStr(`${item.firstName ?? ""} ${item.lastName ?? ""}`.trim())}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="max-w-[210mm] mx-auto print:max-w-none">
-                    {renderLetter()}
-                  </div>
+                  <div className="max-w-[210mm] mx-auto print:max-w-none">{renderLetter()}</div>
                 </>
               )}
               {letterItems.length === 0 && !loading && (
-                <p className="text-muted-foreground">No data for this report. Load data in Table view first.</p>
+                <p className="text-muted-foreground">
+                  No rows match your filters. Adjust filters in Customize report or refresh data.
+                </p>
               )}
             </div>
           )}
