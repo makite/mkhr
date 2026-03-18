@@ -10,6 +10,7 @@ import {
   UserCheck,
   AlertTriangle,
   Activity,
+  FileText,
 } from "lucide-react";
 import { useNavigate } from "react-router";
 import { useDashboardData } from "@/hooks/useDashboardData";
@@ -41,6 +42,13 @@ export default function SystemAdminDashboard() {
       icon: Building,
       action: () => navigate("/system-admin/company-profile"),
       color: "bg-green-500",
+    },
+    {
+      title: "Activities Report",
+      description: "Audit log report (filter/export)",
+      icon: FileText,
+      action: () => navigate("/system-admin/reports/activities"),
+      color: "bg-slate-600",
     },
     {
       title: "Branch Management",

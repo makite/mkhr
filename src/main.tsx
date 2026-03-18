@@ -6,6 +6,7 @@ import { Toaster } from "sonner";
 import SimpleProtectedRoute from "./auth/simple-protected-route";
 import UserDetailPage from "./modules/system-admin/users/user-detail";
 import NavigateSetter from "./router/navigate-setter";
+import { applyCompanyBranding } from "./services/company-branding";
 
 // Lazy loaded components
 const DashboardLayout = lazy(() => import("./layouts/dashboard-layout"));
@@ -27,6 +28,12 @@ const MenuManagementPage = lazy(
 const AccessManagementPage = lazy(
   () => import("./modules/system-admin/access/page"),
 );
+const CompanyProfilePage = lazy(
+  () => import("./modules/system-admin/company-profile/page"),
+);
+const SystemAdminActivitiesReportPage = lazy(
+  () => import("./modules/system-admin/reports/activities-page"),
+);
 
 // HR Admin
 const HRDashboard = lazy(() => import("./modules/hr/dashboard/page"));
@@ -45,6 +52,9 @@ const HRReportsPage = lazy(() => import("./modules/hr/reports/page"));
 
 // Placeholder for missing modules
 const PlaceholderPage = lazy(() => import("./components/placeholder-page"));
+
+// Apply branding/logo early (non-blocking). Defaults remain if API missing.
+void applyCompanyBranding();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
@@ -83,7 +93,7 @@ createRoot(document.getElementById("root")!).render(
           <Route path="/system-admin/roles" element={<RolesPage />} />
           <Route
             path="system-admin/company-profile"
-            element={<PlaceholderPage />}
+            element={<CompanyProfilePage />}
           />
           <Route path="system-admin/branches" element={<PlaceholderPage />} />
           <Route
@@ -94,6 +104,10 @@ createRoot(document.getElementById("root")!).render(
           <Route
             path="system-admin/access"
             element={<AccessManagementPage />}
+          />
+          <Route
+            path="system-admin/reports/activities"
+            element={<SystemAdminActivitiesReportPage />}
           />
 
           {/* HR Admin */}

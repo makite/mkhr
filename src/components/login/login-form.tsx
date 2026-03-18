@@ -16,6 +16,8 @@ import { Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router";
 import { useNavigate } from "react-router";
+import { useEffect } from "react";
+import { getCompanyLogoUrl } from "@/services/company-branding";
 
 export function LoginForm({
   className,
@@ -27,8 +29,13 @@ export function LoginForm({
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [logoUrl, setLogoUrl] = useState<string>("/mk_logo.png");
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    setLogoUrl(getCompanyLogoUrl("/mk_logo.png"));
+  }, []);
 
   const normalizePath = (path: string): string => {
     if (!path || !path.startsWith("/")) return path;
@@ -124,7 +131,7 @@ export function LoginForm({
       <Card className="w-full max-w-md rounded-2xl shadow-lg overflow-hidden">
         <CardHeader className="text-center py-6">
           <img
-            src="/mk_logo.png"
+            src={logoUrl}
             alt="MK Logo"
             className="w-24 h-24 mx-auto mb-4"
           />

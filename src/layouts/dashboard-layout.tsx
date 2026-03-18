@@ -35,6 +35,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Bell, Search, KeyRound, LogOut, User as UserIcon } from "lucide-react";
 import { Link, Outlet, useNavigate } from "react-router";
 import { useState, useEffect } from "react";
+import { getCompanyLogoUrl } from "@/services/company-branding";
 
 type ApiSuccess<T> = {
   success: boolean;
@@ -64,6 +65,7 @@ export default function DashboardLayout() {
 
   const [meLoading, setMeLoading] = useState(true);
   const [me, setMe] = useState<CurrentUser | null>(null);
+  const [logoUrl, setLogoUrl] = useState<string>("/mk_logo.png");
 
   const [pwdOpen, setPwdOpen] = useState(false);
   const [pwdSaving, setPwdSaving] = useState(false);
@@ -94,6 +96,10 @@ export default function DashboardLayout() {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  useEffect(() => {
+    setLogoUrl(getCompanyLogoUrl("/mk_logo.png"));
   }, []);
 
   const handleLogout = () => {
@@ -175,9 +181,9 @@ export default function DashboardLayout() {
 
             {/* LOGO */}
             <SidebarHeader>
-              <Link to="/dashboard">
+              <Link to="/system-admin/dashboard">
                 <img
-                  src="../../../mk_logo.png"
+                  src={logoUrl}
                   alt="mk logo"
                   className="w-14 h-14"
                 />

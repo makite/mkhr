@@ -22,6 +22,9 @@ const NotFound = lazy(() => import("../pages/not-found-page"));
 const SystemAdminDashboard = lazy(() => import("../modules/system-admin/dashboard/page"));
 const UsersPage = lazy(() => import("../modules/system-admin/users/page"));
 const RolesPage = lazy(() => import("../modules/system-admin/role/page"));
+const SystemAdminActivitiesReportPage = lazy(
+  () => import("../modules/system-admin/reports/activities-page"),
+);
 
 // HR Admin Routes
 const HRDashboard = lazy(() => import("../modules/hr/dashboard/page"));
@@ -81,6 +84,15 @@ export const routeConfig: ExtendedRouteObject[] = [
           title: "Roles", 
           module: "system-admin",
           roles: ["SYSTEM_ADMIN", "SUPER_ADMIN"] 
+        },
+      },
+      {
+        path: "system-admin/reports/activities",
+        element: <SystemAdminActivitiesReportPage />,
+        meta: {
+          title: "Activities Report",
+          module: "system-admin",
+          roles: ["ADMIN", "SUPER_ADMIN"],
         },
       },
 

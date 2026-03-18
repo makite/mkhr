@@ -5,7 +5,10 @@ import api from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { DataTable, type Action } from "@/components/shared/table-data";
 import { FormDialog, type FormField } from "@/components/shared/form-dialog";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Users, ShieldCheck } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type Permission = {
   id: string;
@@ -32,6 +35,18 @@ type UserRow = {
   isActive: boolean;
 };
 
+type NavItem = {
+  id: string;
+  title: string;
+  path: string;
+  module?: string | null;
+  roles?: string[] | null;
+  permissions?: string[] | null; // permission codes
+  isActive?: boolean;
+  isVisible?: boolean;
+  children?: NavItem[];
+};
+
 export default function AccessManagementPage() {
   const { toast } = useToast();
 
@@ -54,6 +69,17 @@ export default function AccessManagementPage() {
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [users, setUsers] = useState<UserRow[]>([]);
 
+  const [permUsageOpen, setPermUsageOpen] = useState(false);
+  const [permUsageLoading, setPermUsageLoading] = useState(false);
+  const [permUsage, setPermUsage] = useState<{
+    permission: Permission | null;
+    roles: { id: string; name: string; description?: string | null }[];
+    users: { id: string; email: string; firstName?: string; lastName?: string }[];
+  }>({ permission: null, roles: [], users: [] });
+
+  const [loadingNav, setLoadingNav] = useState(true);
+  const [navConfig, setNavConfig] = useState<NavItem[]>([]);
+
   // dialogs
   const [permDialogOpen, setPermDialogOpen] = useState(false);
   const [editingPerm, setEditingPerm] = useState<Permission | null>(null);
@@ -68,9 +94,22 @@ export default function AccessManagementPage() {
   const [editingRole, setEditingRole] = useState<RoleModel | null>(null);
   const [rolePerms, setRolePerms] = useState<string[]>([]);
 
+  const [newRoleDialogOpen, setNewRoleDialogOpen] = useState(false);
+  const [newRoleForm, setNewRoleForm] = useState({ name: "", description: "" });
+
   const [userDialogOpen, setUserDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserRow | null>(null);
   const [userDirectPerms, setUserDirectPerms] = useState<string[]>([]);
+
+  const [assignGroupOpen, setAssignGroupOpen] = useState(false);
+  const [assignUser, setAssignUser] = useState<UserRow | null>(null);
+  const [assignRoleId, setAssignRoleId] = useState<string>("");
+
+  const [menuTabRoleId, setMenuTabRoleId] = useState<string>("");
+  const menuRole = useMemo(
+    () => roles.find((r) => r.id === menuTabRoleId) || null,
+    [roles, menuTabRoleId],
+  );
 
   const permissionOptions = useMemo(
     () =>
@@ -148,8 +187,113 @@ export default function AccessManagementPage() {
     fetchPermissions();
     fetchRoles();
     fetchUsers();
+    fetchNavConfig();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const fetchNavConfig = async () => {
+    try {
+      setLoadingNav(true);
+      const res = await api.get<any>("/navigation/config");
+      const items =
+        pickArray<NavItem>(res, ["data.items", "items", "data.data.items"]) || [];
+      setNavConfig(items);
+    } catch (e) {
+      setNavConfig([]);
+      toast({
+        title: "Error",
+        description:
+          (e as { message?: string })?.message || "Failed to load navigation config",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingNav(false);
+    }
+  };
+
+  const flattenNav = (items: NavItem[]): NavItem[] => {
+    const out: NavItem[] = [];
+    const walk = (arr: NavItem[]) => {
+      for (const it of arr || []) {
+        out.push(it);
+        if (Array.isArray(it.children) && it.children.length) walk(it.children);
+      }
+    };
+    walk(items);
+    return out;
+  };
+
+  const hrNavItems = useMemo(() => {
+    const all = flattenNav(navConfig);
+    return all.filter((n) => (n.module || "") === "hr" && n.isActive !== false && n.isVisible !== false);
+  }, [navConfig]);
+
+  const permByCode = useMemo(() => {
+    const m = new Map<string, Permission>();
+    for (const p of permissions) m.set(p.code, p);
+    return m;
+  }, [permissions]);
+
+  const menuPermissionCode = (navId: string) => `nav:${navId}:view`;
+
+  const ensureMenuPermission = async (nav: NavItem) => {
+    const code = menuPermissionCode(nav.id);
+    if (permByCode.has(code)) return code;
+    // Create a permission for this menu item
+    await api.post("/permission", {
+      name: `Menu access: ${nav.title}`,
+      code,
+      module: "navigation",
+      description: `Allows viewing menu item ${nav.title} (${nav.path})`,
+    });
+    await fetchPermissions();
+    return code;
+  };
+
+  const patchNavPermissions = async (nav: NavItem, requiredCode: string) => {
+    const existing = Array.isArray(nav.permissions) ? nav.permissions : [];
+    if (existing.includes(requiredCode)) return;
+    await api.put(`/navigation/items/${nav.id}`, {
+      permissions: [...existing, requiredCode],
+    });
+    await fetchNavConfig();
+  };
+
+  const toggleMenuForGroup = async (nav: NavItem, enabled: boolean) => {
+    if (!menuRole) return;
+    try {
+      const code = await ensureMenuPermission(nav);
+      await patchNavPermissions(nav, code);
+      const perm = permByCode.get(code) || null;
+      if (!perm) {
+        toast({
+          title: "Error",
+          description: "Permission created but not found after refresh",
+          variant: "destructive",
+        });
+        return;
+      }
+      const currentIds = (menuRole.permissions || []).map((p) => p.id);
+      const nextIds = enabled
+        ? Array.from(new Set([...currentIds, perm.id]))
+        : currentIds.filter((id) => id !== perm.id);
+
+      await api.post(`/role/${menuRole.id}/permissions`, {
+        permissions: nextIds,
+      });
+      toast({
+        title: "Updated",
+        description: `${enabled ? "Enabled" : "Disabled"} ${nav.title} for ${menuRole.name}`,
+      });
+      await fetchRoles();
+    } catch (e) {
+      toast({
+        title: "Error",
+        description: (e as { message?: string })?.message || "Failed to update menu access",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Permissions UI
   const permFields: FormField[] = [
@@ -184,6 +328,38 @@ export default function AccessManagementPage() {
   ];
 
   const permActions: Action<Permission>[] = [
+    {
+      label: "Usage",
+      icon: <Users className="h-4 w-4" />,
+      onClick: async (p) => {
+        try {
+          setPermUsageLoading(true);
+          setPermUsageOpen(true);
+          const res = await api.get<any>(`/permission/${p.id}`);
+          const perm =
+            (res as any)?.data?.permission ||
+            (res as any)?.permission ||
+            (res as any)?.data?.data?.permission ||
+            null;
+          setPermUsage({
+            permission: perm,
+            roles: Array.isArray(perm?.roles) ? perm.roles : [],
+            users: Array.isArray(perm?.users) ? perm.users : [],
+          });
+        } catch (e) {
+          toast({
+            title: "Error",
+            description:
+              (e as { message?: string })?.message || "Failed to load permission usage",
+            variant: "destructive",
+          });
+          setPermUsage({ permission: null, roles: [], users: [] });
+          setPermUsageOpen(false);
+        } finally {
+          setPermUsageLoading(false);
+        }
+      },
+    },
     {
       label: "Edit",
       icon: <Pencil className="h-4 w-4" />,
@@ -288,6 +464,26 @@ export default function AccessManagementPage() {
     },
   ];
 
+  const createRole = async () => {
+    try {
+      await api.post("/role", {
+        name: newRoleForm.name,
+        description: newRoleForm.description,
+        permissions: [],
+      });
+      toast({ title: "Success", description: "Group created" });
+      setNewRoleDialogOpen(false);
+      setNewRoleForm({ name: "", description: "" });
+      fetchRoles();
+    } catch (e) {
+      toast({
+        title: "Error",
+        description: (e as { message?: string })?.message || "Failed to create group",
+        variant: "destructive",
+      });
+    }
+  };
+
   const saveRolePerms = async () => {
     if (!editingRole) return;
     try {
@@ -362,7 +558,33 @@ export default function AccessManagementPage() {
         setUserDialogOpen(true);
       },
     },
+    {
+      label: "Assign group",
+      icon: <Users className="h-4 w-4" />,
+      onClick: (u) => {
+        setAssignUser(u);
+        setAssignRoleId("");
+        setAssignGroupOpen(true);
+      },
+    },
   ];
+
+  const assignGroup = async () => {
+    if (!assignUser || !assignRoleId) return;
+    try {
+      await api.post(`/user/${assignUser.id}/assign-role`, { roleId: assignRoleId });
+      toast({ title: "Success", description: "Group assigned to user" });
+      setAssignGroupOpen(false);
+      setAssignUser(null);
+      setAssignRoleId("");
+    } catch (e) {
+      toast({
+        title: "Error",
+        description: (e as { message?: string })?.message || "Failed to assign group",
+        variant: "destructive",
+      });
+    }
+  };
 
   const userPermFields: FormField[] = [
     {
@@ -407,6 +629,7 @@ export default function AccessManagementPage() {
         <TabsList>
           <TabsTrigger value="permissions">Permissions</TabsTrigger>
           <TabsTrigger value="roles">Role access</TabsTrigger>
+          <TabsTrigger value="menu">Menu access</TabsTrigger>
           <TabsTrigger value="users">User access</TabsTrigger>
         </TabsList>
 
@@ -426,6 +649,79 @@ export default function AccessManagementPage() {
             actions={permActions}
             searchPlaceholder="Search permissions..."
           />
+
+          {permUsageOpen && (
+            <div className="mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">
+                    Permission usage
+                    {permUsage?.permission?.code
+                      ? `: ${permUsage.permission.code}`
+                      : ""}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {permUsageLoading ? (
+                    <div className="text-sm text-muted-foreground">Loading…</div>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-sm text-muted-foreground">
+                          Roles/users currently having this permission.
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setPermUsageOpen(false)}
+                        >
+                          Close
+                        </Button>
+                      </div>
+
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="rounded-md border p-3">
+                          <div className="font-medium mb-2">Groups (roles)</div>
+                          {permUsage.roles.length === 0 ? (
+                            <div className="text-sm text-muted-foreground">None</div>
+                          ) : (
+                            <div className="space-y-2">
+                              {permUsage.roles.map((r) => (
+                                <div key={r.id} className="flex items-center justify-between">
+                                  <span>{r.name}</span>
+                                  <Badge variant="secondary">role</Badge>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div className="rounded-md border p-3">
+                          <div className="font-medium mb-2">Users (direct)</div>
+                          {permUsage.users.length === 0 ? (
+                            <div className="text-sm text-muted-foreground">None</div>
+                          ) : (
+                            <div className="space-y-2">
+                              {permUsage.users.map((u) => (
+                                <div key={u.id} className="flex items-center justify-between gap-2">
+                                  <span className="truncate">
+                                    {[u.firstName, u.lastName].filter(Boolean).join(" ") ||
+                                      u.email}
+                                  </span>
+                                  <Badge variant="outline" className="font-mono">
+                                    {u.email}
+                                  </Badge>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
           <FormDialog
             open={permDialogOpen}
@@ -448,6 +744,7 @@ export default function AccessManagementPage() {
             title="Role access"
             description="Assign permissions to roles."
             onRefresh={fetchRoles}
+            onAdd={() => setNewRoleDialogOpen(true)}
             actions={roleActions}
             searchPlaceholder="Search roles..."
           />
@@ -465,6 +762,98 @@ export default function AccessManagementPage() {
             isEditing
             size="xl"
           />
+
+          <FormDialog
+            open={newRoleDialogOpen}
+            onOpenChange={setNewRoleDialogOpen}
+            title="Create group"
+            fields={[
+              { name: "name", label: "Group name", type: "text", required: true },
+              { name: "description", label: "Description", type: "textarea" },
+            ]}
+            values={newRoleForm}
+            onChange={(name, value) =>
+              setNewRoleForm((p) => ({ ...p, [name]: String(value ?? "") }))
+            }
+            onSubmit={createRole}
+            isEditing={false}
+            size="lg"
+          />
+        </TabsContent>
+
+        <TabsContent value="menu">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ShieldCheck className="h-5 w-5" />
+                Menu access (by group)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="text-sm text-muted-foreground">
+                Select a group, then enable the HR menus it can access. This will automatically:
+                (1) create a permission code for the menu if missing, (2) attach that permission
+                code to the menu item, and (3) grant/revoke the permission to the selected group.
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="text-sm font-medium">Group</div>
+                <select
+                  className="h-10 rounded-md border bg-background px-3 text-sm"
+                  value={menuTabRoleId}
+                  onChange={(e) => setMenuTabRoleId(e.target.value)}
+                >
+                  <option value="">Select group…</option>
+                  {roles.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
+                  ))}
+                </select>
+                {loadingNav && <span className="text-sm text-muted-foreground">Loading menus…</span>}
+              </div>
+
+              {!menuRole ? (
+                <div className="text-sm text-muted-foreground">Pick a group to manage menu access.</div>
+              ) : (
+                <div className="space-y-2">
+                  {hrNavItems.length === 0 ? (
+                    <div className="text-sm text-muted-foreground">
+                      No HR menu items found in navigation config.
+                    </div>
+                  ) : (
+                    hrNavItems.map((nav) => {
+                      const code = menuPermissionCode(nav.id);
+                      const perm = permByCode.get(code);
+                      const enabled =
+                        !!perm && (menuRole.permissions || []).some((p) => p.id === perm.id);
+                      return (
+                        <div
+                          key={nav.id}
+                          className="flex items-center justify-between gap-4 rounded-md border p-3"
+                        >
+                          <div className="min-w-0">
+                            <div className="font-medium truncate">{nav.title}</div>
+                            <div className="text-xs text-muted-foreground truncate">{nav.path}</div>
+                            <div className="text-xs text-muted-foreground font-mono">
+                              {code}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Checkbox
+                              checked={enabled}
+                              onCheckedChange={(v) => toggleMenuForGroup(nav, v === true)}
+                            />
+                            <span className="text-sm">{enabled ? "Enabled" : "Disabled"}</span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="users">
@@ -491,6 +880,28 @@ export default function AccessManagementPage() {
             onSubmit={saveUserPerms}
             isEditing
             size="xl"
+          />
+
+          <FormDialog
+            open={assignGroupOpen}
+            onOpenChange={setAssignGroupOpen}
+            title={`Assign group${assignUser ? `: ${assignUser.email}` : ""}`}
+            fields={[
+              {
+                name: "roleId",
+                label: "Group",
+                type: "select",
+                required: true,
+                options: roles.map((r) => ({ value: r.id, label: r.name })),
+              },
+            ]}
+            values={{ roleId: assignRoleId }}
+            onChange={(name, value) => {
+              if (name === "roleId") setAssignRoleId(String(value || ""));
+            }}
+            onSubmit={assignGroup}
+            isEditing={false}
+            size="lg"
           />
         </TabsContent>
       </Tabs>
