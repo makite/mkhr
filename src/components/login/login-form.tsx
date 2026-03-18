@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import api from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,13 +53,21 @@ export function LoginForm({
     walk(items);
 
     const dashboard =
-      flat.find((i) => typeof i.path === "string" && /dashboard/i.test(i.path)) ||
-      flat.find((i) => typeof i.title === "string" && /dashboard/i.test(i.title)) ||
+      flat.find(
+        (i) => typeof i.path === "string" && /dashboard/i.test(i.path),
+      ) ||
+      flat.find(
+        (i) => typeof i.title === "string" && /dashboard/i.test(i.title),
+      ) ||
       flat.find((i) => typeof i.id === "string" && /dashboard/i.test(i.id));
     if (dashboard?.path) return normalizePath(dashboard.path);
 
-    const firstWithPath = flat.find((i) => typeof i.path === "string" && i.path.startsWith("/"));
-    return firstWithPath?.path ? normalizePath(firstWithPath.path) : "/system-admin/dashboard";
+    const firstWithPath = flat.find(
+      (i) => typeof i.path === "string" && i.path.startsWith("/"),
+    );
+    return firstWithPath?.path
+      ? normalizePath(firstWithPath.path)
+      : "/system-admin/dashboard";
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -75,7 +84,8 @@ export function LoginForm({
         email: username,
         password,
       });
-      const body = response && typeof response === "object" ? response as any : {};
+      const body =
+        response && typeof response === "object" ? (response as any) : {};
       const token = body?.data?.token ?? body?.token;
       const user = body?.data?.user ?? body?.user;
       if (token) localStorage.setItem("token", token);
@@ -84,8 +94,7 @@ export function LoginForm({
       // Redirect to first permitted dashboard/module from navigation API (api returns body directly)
       try {
         const navRes = await api.get<any>("/navigation");
-        const items =
-          navRes?.data?.items ?? navRes?.items ?? [];
+        const items = navRes?.data?.items ?? navRes?.items ?? [];
         const target = pickDashboardPath(Array.isArray(items) ? items : []);
         navigate(target || "/system-admin/dashboard", { replace: true });
       } catch {

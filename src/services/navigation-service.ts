@@ -2,13 +2,6 @@ import api from "@/lib/api";
 import * as Lucide from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
-type ApiSuccess<T> = {
-  success: boolean;
-  message: string;
-  data: T;
-  timestamp: string;
-};
-
 export type ApiNavItem = {
   id: string;
   parentId?: string | null;

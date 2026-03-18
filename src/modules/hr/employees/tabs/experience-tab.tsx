@@ -28,7 +28,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import api from "@/lib/api";
 
@@ -457,6 +456,24 @@ export const ExperienceTab = ({
                             <Textarea
                               placeholder="Job description..."
                               {...field}
+                              value={(field.value ?? "") as string}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name={`experiences.${index}.achievements`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Achievements</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Achievements..."
+                              {...field}
+                              value={(field.value ?? "") as string}
                             />
                           </FormControl>
                         </FormItem>
