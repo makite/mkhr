@@ -111,6 +111,13 @@ export const navigationConfig: NavigationItem[] = [
         path: "/hr-admin/training",
         roles: ["HR_ADMIN", "HR_MANAGER", "SUPER_ADMIN"],
       },
+      {
+        id: "hr-reports",
+        title: "HR Reports",
+        icon: BarChart3,
+        path: "/hr/reports",
+        roles: ["HR_ADMIN", "HR_MANAGER", "SUPER_ADMIN"],
+      },
     ],
   },
 
