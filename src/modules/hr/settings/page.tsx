@@ -6,6 +6,7 @@ import { LookupValuesTab } from "@/modules/hr/settings/tabs/lookup-values-tab";
 import { PositionsTab } from "@/modules/hr/settings/tabs/positions-tab";
 import { SalaryMatrixTab } from "@/modules/hr/settings/tabs/salary-matrix-tab";
 import { ScalesTab } from "@/modules/hr/settings/tabs/scales-tab";
+import { BenefitsTab } from "@/modules/hr/settings/tabs/benefits-tab";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 export default function HRSettings() {
@@ -33,6 +34,7 @@ export default function HRSettings() {
           <TabsTrigger value="grades">📈 Grades</TabsTrigger>
           <TabsTrigger value="salary-matrix">💰 Salary Matrix</TabsTrigger>
           <TabsTrigger value="positions">👔 Positions</TabsTrigger>
+          <TabsTrigger value="benefits">🎁 Benefits</TabsTrigger>
         </TabsList>
 
         {/* Lookup Section */}
@@ -68,6 +70,10 @@ export default function HRSettings() {
 
         <TabsContent value="positions">
           <PositionsTab />
+        </TabsContent>
+
+        <TabsContent value="benefits">
+          <BenefitsTab />
         </TabsContent>
       </Tabs>
     </div>
