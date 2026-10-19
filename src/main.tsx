@@ -66,7 +66,7 @@ createRoot(document.getElementById("root")!).render(
         closeButton
         expand={true}
         duration={4000}
-      />{" "}
+      />
       <Routes>
         {/* Public routes */}
         <Route path="/" element={<LoginPage />} />
@@ -83,49 +83,160 @@ createRoot(document.getElementById("root")!).render(
             </SimpleProtectedRoute>
           }
         >
-          {/* System Admin */}
+          {/* System Admin Dashboard & Aliases */}
+          <Route path="dashboard" element={<SystemAdminDashboard />} />
+          <Route path="/dashboard" element={<SystemAdminDashboard />} />
+          <Route path="system-admin" element={<SystemAdminDashboard />} />
+          <Route path="/system-admin" element={<SystemAdminDashboard />} />
+          <Route
+            path="system-admin/dashboard"
+            element={<SystemAdminDashboard />}
+          />
           <Route
             path="/system-admin/dashboard"
             element={<SystemAdminDashboard />}
           />
+
+          {/* Users Management & Aliases */}
+          <Route path="users" element={<UsersPage />} />
+          <Route path="/users" element={<UsersPage />} />
+          <Route path="users/:id" element={<UserDetailPage />} />
+          <Route path="/users/:id" element={<UserDetailPage />} />
+          <Route path="system-admin/users" element={<UsersPage />} />
           <Route path="/system-admin/users" element={<UsersPage />} />
+          <Route path="system-admin/users/:id" element={<UserDetailPage />} />
           <Route path="/system-admin/users/:id" element={<UserDetailPage />} />
+
+          {/* Roles Management & Aliases */}
+          <Route path="roles" element={<RolesPage />} />
+          <Route path="/roles" element={<RolesPage />} />
+          <Route path="system-admin/roles" element={<RolesPage />} />
           <Route path="/system-admin/roles" element={<RolesPage />} />
-          <Route
-            path="system-admin/company-profile"
-            element={<CompanyProfilePage />}
-          />
-          <Route path="system-admin/branches" element={<PlaceholderPage />} />
-          <Route
-            path="system-admin/fiscal-years"
-            element={<PlaceholderPage />}
-          />
+
+          {/* Menu Management & Aliases */}
+          <Route path="menu" element={<MenuManagementPage />} />
+          <Route path="/menu" element={<MenuManagementPage />} />
           <Route path="system-admin/menu" element={<MenuManagementPage />} />
+          <Route path="/system-admin/menu" element={<MenuManagementPage />} />
+
+          {/* Access Management & Aliases */}
+          <Route path="access" element={<AccessManagementPage />} />
+          <Route path="/access" element={<AccessManagementPage />} />
           <Route
             path="system-admin/access"
             element={<AccessManagementPage />}
           />
           <Route
+            path="/system-admin/access"
+            element={<AccessManagementPage />}
+          />
+
+          {/* Company Profile & Aliases */}
+          <Route path="company-profile" element={<CompanyProfilePage />} />
+          <Route path="/company-profile" element={<CompanyProfilePage />} />
+          <Route
+            path="system-admin/company-profile"
+            element={<CompanyProfilePage />}
+          />
+          <Route
+            path="/system-admin/company-profile"
+            element={<CompanyProfilePage />}
+          />
+
+          {/* Reports Activities */}
+          <Route
             path="system-admin/reports/activities"
             element={<SystemAdminActivitiesReportPage />}
           />
-
-          {/* HR Admin */}
-          <Route path="hr-admin/dashboard" element={<HRDashboard />} />
-          <Route path="hr/settings" element={<HRSettingsPage />} />
-          <Route path="hr-admin/training" element={<PlaceholderPage />} />
-          <Route path="/hr/employees" element={<EmployeesPage />} />
-          <Route path="/hr/employees/:id" element={<EmployeeDetailPage />} />
           <Route
-            path="/hr/employees/:id/edit"
-            element={<EmployeeAdminPage />}
+            path="/system-admin/reports/activities"
+            element={<SystemAdminActivitiesReportPage />}
           />
+
+          {/* Placeholders */}
+          <Route path="system-admin/branches" element={<PlaceholderPage />} />
+          <Route path="/system-admin/branches" element={<PlaceholderPage />} />
+          <Route
+            path="system-admin/fiscal-years"
+            element={<PlaceholderPage />}
+          />
+          <Route
+            path="/system-admin/fiscal-years"
+            element={<PlaceholderPage />}
+          />
+
+          {/* HR Admin Dashboard & Aliases */}
+          <Route path="hr-admin" element={<HRDashboard />} />
+          <Route path="/hr-admin" element={<HRDashboard />} />
+          <Route path="hr-admin/dashboard" element={<HRDashboard />} />
+          <Route path="/hr-admin/dashboard" element={<HRDashboard />} />
+          <Route path="hr/dashboard" element={<HRDashboard />} />
+          <Route path="/hr/dashboard" element={<HRDashboard />} />
+
+          {/* HR Settings & Aliases */}
+          <Route path="hr/settings" element={<HRSettingsPage />} />
+          <Route path="/hr/settings" element={<HRSettingsPage />} />
+          <Route path="hr-admin/settings" element={<HRSettingsPage />} />
+          <Route path="/hr-admin/settings" element={<HRSettingsPage />} />
+          <Route path="settings" element={<HRSettingsPage />} />
+          <Route path="/settings" element={<HRSettingsPage />} />
+          <Route path="hr-admin/training" element={<PlaceholderPage />} />
+          <Route path="/hr-admin/training" element={<PlaceholderPage />} />
+
+          {/* Employee Management & Aliases */}
+          <Route path="employees" element={<EmployeesPage />} />
+          <Route path="/employees" element={<EmployeesPage />} />
+          <Route path="hr/employees" element={<EmployeesPage />} />
+          <Route path="/hr/employees" element={<EmployeesPage />} />
+
+          <Route path="employees/new" element={<EmployeeAdminPage />} />
+          <Route path="/employees/new" element={<EmployeeAdminPage />} />
+          <Route path="hr/employees/new" element={<EmployeeAdminPage />} />
           <Route path="/hr/employees/new" element={<EmployeeAdminPage />} />
+
+          <Route path="employees/:id" element={<EmployeeDetailPage />} />
+          <Route path="/employees/:id" element={<EmployeeDetailPage />} />
+          <Route path="hr/employees/:id" element={<EmployeeDetailPage />} />
+          <Route path="/hr/employees/:id" element={<EmployeeDetailPage />} />
+
+          <Route path="employees/:id/edit" element={<EmployeeAdminPage />} />
+          <Route path="/employees/:id/edit" element={<EmployeeAdminPage />} />
+          <Route path="hr/employees/:id/edit" element={<EmployeeAdminPage />} />
+          <Route path="/hr/employees/:id/edit" element={<EmployeeAdminPage />} />
+
+          {/* HR Actions Approval & Aliases */}
+          <Route
+            path="hr/actions-approval"
+            element={<HrActionsApprovalPage />}
+          />
           <Route
             path="/hr/actions-approval"
             element={<HrActionsApprovalPage />}
           />
+          <Route
+            path="actions-approval"
+            element={<HrActionsApprovalPage />}
+          />
+          <Route
+            path="/actions-approval"
+            element={<HrActionsApprovalPage />}
+          />
+          <Route path="hr-actions" element={<HrActionsApprovalPage />} />
+          <Route path="/hr-actions" element={<HrActionsApprovalPage />} />
+
+          {/* HR Reports & Aliases */}
+          <Route path="hr/reports" element={<HRReportsPage />} />
           <Route path="/hr/reports" element={<HRReportsPage />} />
+          <Route path="reports" element={<HRReportsPage />} />
+          <Route path="/reports" element={<HRReportsPage />} />
+
+          {/* User Profile */}
+          <Route path="profile" element={<MyProfilePage />} />
+          <Route path="/profile" element={<MyProfilePage />} />
+          <Route path="my-profile" element={<MyProfilePage />} />
+          <Route path="/my-profile" element={<MyProfilePage />} />
+          <Route path="self-service/profile" element={<MyProfilePage />} />
+          <Route path="/self-service/profile" element={<MyProfilePage />} />
 
           {/* Other modules */}
           <Route path="/hr-leave/dashboard" element={<PlaceholderPage />} />
@@ -140,10 +251,7 @@ createRoot(document.getElementById("root")!).render(
             element={<PlaceholderPage />}
           />
           <Route path="/self-service/dashboard" element={<PlaceholderPage />} />
-          <Route path="/self-service/profile" element={<PlaceholderPage />} />
-          <Route path="/my-profile" element={<MyProfilePage />} />
           <Route path="/help" element={<PlaceholderPage />} />
-          <Route path="/settings" element={<PlaceholderPage />} />
           <Route
             path="/payroll-management/dashboard"
             element={<PlaceholderPage />}
@@ -158,7 +266,7 @@ createRoot(document.getElementById("root")!).render(
           />
         </Route>
 
-        {/* 404 */}
+        {/* 404 Fallback */}
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
