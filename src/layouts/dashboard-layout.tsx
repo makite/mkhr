@@ -119,7 +119,10 @@ export default function DashboardLayout() {
   }, []);
 
   useEffect(() => {
-    setLogoUrl(getCompanyLogoUrl("/mk_logo.png"));
+    const updateLogo = () => setLogoUrl(getCompanyLogoUrl("/mk_logo.png"));
+    updateLogo();
+    window.addEventListener("company-branding-updated", updateLogo);
+    return () => window.removeEventListener("company-branding-updated", updateLogo);
   }, []);
 
   useEffect(() => {
