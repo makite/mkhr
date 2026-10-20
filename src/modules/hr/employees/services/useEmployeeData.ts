@@ -1,34 +1,48 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import { useState, useEffect, useCallback } from "react";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useState, useCallback, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import type { EmployeeLookupData } from "../types/employee.type";
 import { employeeService } from "./employee-service";
+import { queryKeys } from "@/lib/query-keys";
+import { CACHE_POLICIES } from "@/lib/query-client";
 
+const emptyLookupData: EmployeeLookupData = {
+  titles: [],
+  genders: [],
+  maritalStatuses: [],
+  nationalities: [],
+  employmentTypes: [],
+  departments: [],
+  positions: [],
+  grades: [],
+  scales: [],
+  branches: [],
+  employees: [],
+  salaryMatrix: {},
+};
+
+/**
+ * Enterprise hook backed by TanStack Query.
+ * Caches master lookups, departments, positions, grades, scales, and salary matrix.
+ * - Stale time: 5 minutes (served instantly from cache on navigation).
+ * - Background auto-sync: every 5 minutes in case values change.
+ * - Backward-compatible API for all existing consumer components.
+ */
 export const useEmployeeData = () => {
   const { toast } = useToast();
-  const [loading, setLoading] = useState(true);
-  const [lookupData, setLookupData] = useState<EmployeeLookupData>({
-    titles: [],
-    genders: [],
-    maritalStatuses: [],
-    nationalities: [],
-    employmentTypes: [],
-    departments: [],
-    positions: [],
-    grades: [],
-    scales: [],
-    branches: [],
-    employees: [],
-    salaryMatrix: {},
-  });
+  const [selectedGradeId, setSelectedGradeId] = useState<string | null>(null);
 
-  const [filteredPositions, setFilteredPositions] = useState<any[]>([]);
-  const [filteredScales, setFilteredScales] = useState<any[]>([]);
-
-  useEffect(() => {
-    const fetchData = async () => {
+  const {
+    data,
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: queryKeys.employees.combinedLookupAndOrg(),
+    queryFn: async () => {
       try {
-        setLoading(true);
         const [lookup, org] = await Promise.all([
           employeeService.fetchLookupData(),
           employeeService.fetchOrganizationData(),
@@ -39,7 +53,7 @@ export const useEmployeeData = () => {
           ...org,
         };
 
-        // Build salary map: gradeId -> scaleId -> amount
+        // Build 2D salary matrix map: gradeId -> scaleId -> amount
         const salaryMatrixRaw = (combinedData as any).salaryMatrixFull || {};
         const gradeCodeById = new Map<string, string>();
         const scaleCodeById = new Map<string, string>();
@@ -61,52 +75,65 @@ export const useEmployeeData = () => {
             }
           }
         }
-        
-        setLookupData({
+
+        const lookupData: EmployeeLookupData = {
           ...(combinedData as any),
           salaryMatrix,
-        });
-        
-        // Initialize filtered data with all positions and scales
-        setFilteredPositions(combinedData.positions || []);
-        setFilteredScales(combinedData.scales || []);
-      } catch (error) {
+        };
+
+        return {
+          lookupData,
+          allPositions: combinedData.positions || [],
+          allScales: combinedData.scales || [],
+        };
+      } catch (err) {
         toast({
           title: "Error",
-          description: "Failed to load data",
+          description: "Failed to load master lookup and organization data",
           variant: "destructive",
         });
-      } finally {
-        setLoading(false);
+        throw err;
       }
-    };
+    },
+    ...CACHE_POLICIES.ORGANIZATION_DATA,
+  });
 
-    fetchData();
-  }, []);
+  const lookupData: EmployeeLookupData = data?.lookupData || emptyLookupData;
+  const allPositions = data?.allPositions || [];
+  const allScales = data?.allScales || [];
+
+  // Filter positions and scales based on selected grade
+  const filteredPositions = useMemo(() => {
+    if (selectedGradeId && allPositions.length > 0) {
+      return allPositions.filter((p: any) => p.gradeId === selectedGradeId);
+    }
+    return allPositions;
+  }, [selectedGradeId, allPositions]);
+
+  const filteredScales = useMemo(() => {
+    if (selectedGradeId && allScales.length > 0) {
+      return allScales;
+    }
+    return allScales;
+  }, [selectedGradeId, allScales]);
 
   const updateFilteredPositions = useCallback((gradeId: string) => {
-    if (gradeId && lookupData.positions.length > 0) {
-      const filtered = lookupData.positions.filter((p) => p.gradeId === gradeId);
-      setFilteredPositions(filtered);
-    } else {
-      setFilteredPositions(lookupData.positions);
-    }
-  }, [lookupData.positions]);
+    setSelectedGradeId(gradeId || null);
+  }, []);
 
-  const updateFilteredScales = useCallback((gradeId: string) => {
-    if (gradeId && lookupData.scales.length > 0) {
-      setFilteredScales(lookupData.scales);
-    } else {
-      setFilteredScales([]);
-    }
-  }, [lookupData.scales]);
+  const updateFilteredScales = useCallback((_gradeId: string) => {
+    // Scales remain available for the grade
+  }, []);
 
   return {
-    loading,
+    loading: isLoading,
+    isFetching,
     lookupData,
     filteredPositions,
     filteredScales,
     updateFilteredPositions,
     updateFilteredScales,
+    refetch,
+    error,
   };
 };

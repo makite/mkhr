@@ -53,13 +53,17 @@ const HRReportsPage = lazy(() => import("./modules/hr/reports/page"));
 // Placeholder for missing modules
 const PlaceholderPage = lazy(() => import("./components/placeholder-page"));
 
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "./lib/query-client";
+
 // Apply branding/logo early (non-blocking). Defaults remain if API missing.
 void applyCompanyBranding();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <BrowserRouter>
-      <NavigateSetter />
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <NavigateSetter />
       <Toaster
         richColors
         position="top-right"
@@ -270,5 +274,6 @@ createRoot(document.getElementById("root")!).render(
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
+    </QueryClientProvider>
   </StrictMode>,
 );
