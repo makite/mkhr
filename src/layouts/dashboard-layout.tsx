@@ -127,7 +127,7 @@ export default function DashboardLayout() {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    const fetchNav = async () => {
       try {
         setNavLoading(true);
         const navRes = await api.get<any>("/navigation");
@@ -138,9 +138,13 @@ export default function DashboardLayout() {
       } finally {
         if (!cancelled) setNavLoading(false);
       }
-    })();
+    };
+
+    fetchNav();
+    window.addEventListener("company-branding-updated", fetchNav);
     return () => {
       cancelled = true;
+      window.removeEventListener("company-branding-updated", fetchNav);
     };
   }, []);
 

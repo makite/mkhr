@@ -23,6 +23,7 @@ import {
   Building,
   Briefcase,
   MapPin,
+  FolderKanban,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -48,6 +49,7 @@ import {
   type TemplatePreviewData,
 } from "@/services/import-service";
 import { toast } from "sonner";
+import { useCompanyBranding } from "@/services/company-branding";
 
 interface TemplateColumnDef {
   col: string;
@@ -73,6 +75,67 @@ interface TemplateSchemaDef {
 
 // Master Baseline Template Schemas
 const BASELINE_SCHEMAS: Record<string, TemplateSchemaDef> = {
+  ORGANIZATION_DEPARTMENTS: {
+    key: "ORGANIZATION_DEPARTMENTS",
+    title: "Organization Departments Master",
+    description: "Import operational departments, programs, and functional units in a single batch.",
+    filename: "departments_import_template.xlsx",
+    sheetName: "Departments",
+    columns: [
+      { col: "A", key: "name", header: "Department Name *", required: true, type: "Text", sample: "Health & Nutrition Program", note: "Official organizational unit name" },
+      { col: "B", key: "code", header: "Department Code", required: false, type: "Text", sample: "DEPT-HN", note: "Unique code (auto-generated if omitted)" },
+      { col: "C", key: "description", header: "Description", required: false, type: "Text", sample: "Community health outreach and nutrition support unit", note: "Functional mandate" },
+      { col: "D", key: "status", header: "Status", required: false, type: "Dropdown", sample: "Active", note: "Active or Inactive", dropdownKey: "statuses", options: ["Active", "Inactive"] },
+    ],
+    dropdowns: {
+      "Statuses": ["Active", "Inactive"],
+    },
+  },
+
+  ORGANIZATION_BRANCHES: {
+    key: "ORGANIZATION_BRANCHES",
+    title: "Branches & Field Offices Master",
+    description: "Import headquarters, regional field offices, city branches, and operating locations.",
+    filename: "branches_import_template.xlsx",
+    sheetName: "Branches",
+    columns: [
+      { col: "A", key: "name", header: "Branch / Office Name *", required: true, type: "Text", sample: "Hawassa Field Office", note: "Location or branch station name" },
+      { col: "B", key: "code", header: "Branch Code", required: false, type: "Text", sample: "BR-HAW-01", note: "Unique code (auto-generated if omitted)" },
+      { col: "C", key: "city", header: "City", required: false, type: "Text", sample: "Hawassa", note: "Operating municipality" },
+      { col: "D", key: "region", header: "Region / State", required: false, type: "Text", sample: "Sidama", note: "Regional administrative zone" },
+      { col: "E", key: "address", header: "Address", required: false, type: "Text", sample: "Piazza Area, Kebele 02", note: "Street or physical address" },
+      { col: "F", key: "phone", header: "Phone Number", required: false, type: "Text", sample: "+251462201122", note: "Contact line" },
+      { col: "G", key: "isHeadOffice", header: "Is Head Office", required: false, type: "Dropdown", sample: "No", note: "Designates main HQ", dropdownKey: "headOfficeOptions", options: ["Yes", "No"] },
+      { col: "H", key: "status", header: "Status", required: false, type: "Dropdown", sample: "Active", note: "Active or Inactive", dropdownKey: "statuses", options: ["Active", "Inactive"] },
+    ],
+    dropdowns: {
+      "Head Office Options": ["Yes", "No"],
+      "Statuses": ["Active", "Inactive"],
+    },
+  },
+
+  PROJECTS_GRANTS: {
+    key: "PROJECTS_GRANTS",
+    title: "Projects & Grants Master",
+    description: "Import donor-funded projects, co-financing partners, project lifecycles, and approved budget limits.",
+    filename: "projects_grants_template.xlsx",
+    sheetName: "Projects & Grants",
+    columns: [
+      { col: "A", key: "code", header: "Project Code *", required: true, type: "Text", sample: "PRJ-WASH-2026", note: "Official internal / donor project code" },
+      { col: "B", key: "name", header: "Project Name *", required: true, type: "Text", sample: "Oromia Water & Sanitation Initiative", note: "Full program title" },
+      { col: "C", key: "description", header: "Project Description", required: false, type: "Text", sample: "Clean water infrastructure and community health", note: "Brief description" },
+      { col: "D", key: "startDate", header: "Start Date (YYYY-MM-DD) *", required: true, type: "Date", sample: "2026-01-01", note: "Project inception date" },
+      { col: "E", key: "endDate", header: "End Date (YYYY-MM-DD) *", required: true, type: "Date", sample: "2027-12-31", note: "Grant closeout date" },
+      { col: "F", key: "totalBudget", header: "Total Budget (ETB)", required: false, type: "Currency (ETB)", sample: "4,500,000", note: "Overall approved program budget" },
+      { col: "G", key: "status", header: "Status", required: false, type: "Dropdown", sample: "ACTIVE", note: "ACTIVE, DRAFT, COMPLETED, or SUSPENDED", dropdownKey: "statuses", options: ["ACTIVE", "DRAFT", "COMPLETED", "SUSPENDED"] },
+      { col: "H", key: "funder", header: "Primary Funder", required: false, type: "Dropdown", sample: "USAID", note: "Lead donor institution", dropdownKey: "funders", options: ["USAID"] },
+      { col: "I", key: "funderShare", header: "Funder Co-Financing (%)", required: false, type: "Percentage", sample: "100", note: "Share of co-financing (1-100)" },
+    ],
+    dropdowns: {
+      "Statuses": ["ACTIVE", "DRAFT", "COMPLETED", "SUSPENDED"],
+      "Funders": ["USAID"],
+    },
+  },
   EMPLOYEE_ONBOARDING: {
     key: "EMPLOYEE_ONBOARDING",
     title: "Employee Master Roster Onboarding",
@@ -94,10 +157,11 @@ const BASELINE_SCHEMAS: Record<string, TemplateSchemaDef> = {
       { col: "L", key: "position", header: "Position / Job Title *", required: true, type: "Dropdown", sample: "Senior Accountant", note: "Official job title", dropdownKey: "positions", options: ["Senior Accountant", "HR Specialist", "Software Engineer", "Operations Officer", "Internal Auditor"] },
       { col: "M", key: "grade", header: "Salary Grade", required: false, type: "Dropdown", sample: "Grade IV", note: "Compensation grade", dropdownKey: "grades", options: ["Grade I", "Grade II", "Grade III", "Grade IV", "Grade V", "Grade VI"] },
       { col: "N", key: "scale", header: "Salary Scale / Step", required: false, type: "Dropdown", sample: "Step 1", note: "Salary step within grade", dropdownKey: "scales", options: ["Step 1", "Step 2", "Step 3", "Step 4", "Step 5"] },
-      { col: "O", key: "basicSalary", header: "Basic Salary (ETB) *", required: true, type: "Currency (ETB)", sample: "18,500", note: "Monthly gross salary in Ethiopian Birr" },
-      { col: "P", key: "tin", header: "TIN Number", required: false, type: "Numeric Text", sample: "0098765432", note: "Tax identification number (10 digits)" },
-      { col: "Q", key: "pensionPfNumber", header: "Pension / PF Number", required: false, type: "Text", sample: "PF-10023", note: "Provident fund or pension registration number" },
-      { col: "R", key: "pfContRate", header: "PF Contribution Rate (%)", required: false, type: "Percentage", sample: "7", note: "Default is standard 7%" },
+      { col: "O", key: "basicSalary", header: "Basic Salary *", required: true, type: "Decimal", sample: "18,500", note: "Monthly gross salary" },
+      { col: "P", key: "currency", header: "Currency", required: false, type: "Dropdown", sample: "ETB", note: "Compensation currency from lookups", dropdownKey: "currencies", options: ["ETB", "USD"] },
+      { col: "Q", key: "tin", header: "TIN Number", required: false, type: "Numeric Text", sample: "0098765432", note: "Tax identification number (10 digits)" },
+      { col: "R", key: "pensionPfNumber", header: "Pension / PF Number", required: false, type: "Text", sample: "PF-10023", note: "Provident fund or pension registration number" },
+      { col: "S", key: "pfContRate", header: "PF Contribution Rate (%)", required: false, type: "Percentage", sample: "7", note: "Default is standard 7%" },
     ],
     dropdowns: {
       "Departments": ["Finance", "Human Resources", "Information Technology", "Operations", "Legal & Compliance"],
@@ -107,6 +171,7 @@ const BASELINE_SCHEMAS: Record<string, TemplateSchemaDef> = {
       "Employment Types": ["Full Time", "Contract", "Probation", "Internship"],
       "Salary Grades": ["Grade I", "Grade II", "Grade III", "Grade IV", "Grade V", "Grade VI"],
       "Salary Steps": ["Step 1", "Step 2", "Step 3", "Step 4", "Step 5"],
+      "Currencies": ["ETB", "USD"],
     },
   },
 
@@ -226,6 +291,8 @@ interface ImportPageProps {
 }
 
 export default function UniversalImportPage({ mode }: ImportPageProps) {
+  const branding = useCompanyBranding();
+  const isNgoOrProject = branding?.organizationType === "NGO_NONPROFIT" || branding?.organizationType === "PROJECT_BASED_COMMERCIAL";
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -311,6 +378,9 @@ export default function UniversalImportPage({ mode }: ImportPageProps) {
     if (liveTemplateData.dropdowns?.genders?.length) {
       liveDropdowns["Genders (DB)"] = liveTemplateData.dropdowns.genders;
     }
+    if (liveTemplateData.dropdowns?.currencies?.length) {
+      liveDropdowns["Currencies (DB)"] = liveTemplateData.dropdowns.currencies;
+    }
     if (liveTemplateData.dropdowns?.employmentTypes?.length) {
       liveDropdowns["Employment Types (DB)"] = liveTemplateData.dropdowns.employmentTypes;
     }
@@ -344,6 +414,7 @@ export default function UniversalImportPage({ mode }: ImportPageProps) {
         else if (c.key === "employmentType") liveOptions = liveTemplateData.dropdowns?.employmentTypes;
         else if (c.key === "reason" && activeTab === "TERMINATION") liveOptions = liveTemplateData.dropdowns?.terminationReasons;
         else if (c.key === "reason" && activeTab === "PROMOTION") liveOptions = liveTemplateData.dropdowns?.promotionReasons;
+        else if (c.key === "currency") liveOptions = liveTemplateData.dropdowns?.currencies;
         else if (c.key === "incrementMode") liveOptions = liveTemplateData.dropdowns?.incrementModes;
       }
 
@@ -357,7 +428,7 @@ export default function UniversalImportPage({ mode }: ImportPageProps) {
     return {
       ...base,
       sheetName: liveTemplateData.sheetName || base.sheetName,
-      columns: mergedCols,
+      columns: liveTemplateData.columns && liveTemplateData.columns.length > 0 ? liveTemplateData.columns : mergedCols,
       dropdowns: liveDropdowns,
     };
   }, [activeTab, liveTemplateData]);
@@ -596,31 +667,54 @@ export default function UniversalImportPage({ mode }: ImportPageProps) {
             </TabsTrigger>
           </TabsList>
         ) : currentMode === "hr" ? (
-          <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full h-auto p-1 bg-muted/60 rounded-xl">
+          <TabsList className={`grid ${isNgoOrProject ? "grid-cols-2 md:grid-cols-4 lg:grid-cols-7" : "grid-cols-2 md:grid-cols-3 lg:grid-cols-6"} w-full h-auto p-1 bg-muted/60 rounded-xl`}>
             <TabsTrigger
               value="EMPLOYEE_ONBOARDING"
-              className="flex items-center gap-2 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              className="flex items-center gap-1.5 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm"
             >
               <Users className="h-4 w-4 text-emerald-600" />
-              <span className="font-medium text-xs md:text-sm">New Employees</span>
+              <span className="font-medium text-xs md:text-sm">Employees</span>
+            </TabsTrigger>
+            {isNgoOrProject && (
+              <TabsTrigger
+                value="PROJECTS_GRANTS"
+                className="flex items-center gap-1.5 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              >
+                <FolderKanban className="h-4 w-4 text-amber-600" />
+                <span className="font-medium text-xs md:text-sm">Projects & Grants</span>
+              </TabsTrigger>
+            )}
+            <TabsTrigger
+              value="ORGANIZATION_DEPARTMENTS"
+              className="flex items-center gap-1.5 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+            >
+              <Building className="h-4 w-4 text-indigo-600" />
+              <span className="font-medium text-xs md:text-sm">Departments</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="ORGANIZATION_BRANCHES"
+              className="flex items-center gap-1.5 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+            >
+              <MapPin className="h-4 w-4 text-cyan-600" />
+              <span className="font-medium text-xs md:text-sm">Branches & Offices</span>
             </TabsTrigger>
             <TabsTrigger
               value="SALARY_INCREMENT"
-              className="flex items-center gap-2 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              className="flex items-center gap-1.5 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm"
             >
               <TrendingUp className="h-4 w-4 text-blue-600" />
-              <span className="font-medium text-xs md:text-sm">Salary Increments</span>
+              <span className="font-medium text-xs md:text-sm">Increments</span>
             </TabsTrigger>
             <TabsTrigger
               value="PROMOTION"
-              className="flex items-center gap-2 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              className="flex items-center gap-1.5 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm"
             >
               <UserCheck className="h-4 w-4 text-purple-600" />
-              <span className="font-medium text-xs md:text-sm">Promotions & Transfers</span>
+              <span className="font-medium text-xs md:text-sm">Promotions</span>
             </TabsTrigger>
             <TabsTrigger
               value="TERMINATION"
-              className="flex items-center gap-2 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              className="flex items-center gap-1.5 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm"
             >
               <UserX className="h-4 w-4 text-rose-600" />
               <span className="font-medium text-xs md:text-sm">Terminations</span>
@@ -890,6 +984,7 @@ export default function UniversalImportPage({ mode }: ImportPageProps) {
                             <TableHead className="text-xs">Department</TableHead>
                             <TableHead className="text-xs">Branch</TableHead>
                             <TableHead className="text-xs">Position</TableHead>
+                            <TableHead className="text-xs">Currency</TableHead>
                             <TableHead className="text-xs">Basic Salary</TableHead>
                             <TableHead className="text-xs">TIN</TableHead>
                           </>
@@ -1013,8 +1108,13 @@ export default function UniversalImportPage({ mode }: ImportPageProps) {
                                 <TableCell className="text-xs">{row.displayBranch || "—"}</TableCell>
                                 <TableCell className="text-xs">{row.displayPos || "—"}</TableCell>
                                 <TableCell className="text-xs font-mono">
-                                  {row.basicSalary?.toLocaleString()} ETB
-                                </TableCell>
+                                   <Badge variant="outline" className="text-[10px] font-mono">
+                                     {row.currency || "ETB"}
+                                   </Badge>
+                                 </TableCell>
+                                 <TableCell className="text-xs font-mono">
+                                   {row.basicSalary?.toLocaleString()} {row.currency || "ETB"}
+                                 </TableCell>
                                 <TableCell className="text-xs font-mono">{row.tin || "—"}</TableCell>
                               </>
                             )}

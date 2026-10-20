@@ -50,13 +50,14 @@ class EmployeeService {
   }
 
   async fetchLookupData() {
-    const [titlesRes, gendersRes, maritalRes, nationalitiesRes, empTypesRes] =
+    const [titlesRes, gendersRes, maritalRes, nationalitiesRes, empTypesRes, currenciesRes] =
       await Promise.all([
         api.get("/lookups/TITLE"),
         api.get("/lookups/GENDER"),
         api.get("/lookups/MARITAL_STATUS"),
         api.get("/lookups/COUNTRY"),
         api.get("/lookups/EMPLOYMENT_TYPE"),
+        api.get("/lookups/CURRENCY"),
       ]);
 
     return {
@@ -65,6 +66,7 @@ class EmployeeService {
       maritalStatuses: maritalRes.data?.values || [],
       nationalities: nationalitiesRes.data?.values || [],
       employmentTypes: empTypesRes.data?.values || [],
+      currencies: currenciesRes.data?.values || [],
     };
   }
 

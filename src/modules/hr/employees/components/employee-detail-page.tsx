@@ -46,6 +46,8 @@ import { useEmployeeData } from "@/modules/hr/employees/services/useEmployeeData
 import { ActionHistory } from "./actions/action-history";
 import { ActionDetailDialog } from "./actions/action-detail-dialog";
 import type { EmployeeAction } from "./actions/action-types";
+import EmployeeCostAllocationTab from "./employee-cost-allocation-tab";
+import { useCompanyBranding } from "@/services/company-branding";
 
 // action-related UI extracted to components/actions
 
@@ -164,6 +166,35 @@ const getStatusBadge = (status: string) => {
 };
 
 export default function EmployeeDetailPage() {
+  const branding = useCompanyBranding();
+  const [activeOrgType, setActiveOrgType] = useState<string>(() => {
+    return (
+      (typeof localStorage !== "undefined" && localStorage.getItem("company.organizationType")) ||
+      branding?.organizationType ||
+      "NGO_NONPROFIT"
+    );
+  });
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      const stored = localStorage.getItem("company.organizationType");
+      if (stored) setActiveOrgType(stored);
+    };
+    window.addEventListener("company-branding-updated", handleUpdate);
+    return () => window.removeEventListener("company-branding-updated", handleUpdate);
+  }, []);
+
+  useEffect(() => {
+    if (branding?.organizationType) {
+      setActiveOrgType(branding.organizationType);
+    }
+  }, [branding?.organizationType]);
+
+  const isNgoOrProject =
+    activeOrgType === "NGO_NONPROFIT" ||
+    activeOrgType === "PROJECT_BASED_COMMERCIAL" ||
+    branding?.organizationType === "NGO_NONPROFIT" ||
+    branding?.organizationType === "PROJECT_BASED_COMMERCIAL";
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -680,11 +711,11 @@ export default function EmployeeDetailPage() {
           {(employee.requestStatus === "DRAFT" ||
             employee.requestStatus === "PENDING" ||
             (employee.requestStatus === "APPROVED" && canEditApproved)) && (
-            <Button onClick={handleEdit} disabled={isTerminated}>
-              <Edit className="mr-2 h-4 w-4" />
-              Edit
-            </Button>
-          )}
+              <Button onClick={handleEdit} disabled={isTerminated}>
+                <Edit className="mr-2 h-4 w-4" />
+                Edit
+              </Button>
+            )}
 
           {/* Approvals */}
           {employee.requestStatus === "PENDING" && canApprove && (
@@ -875,10 +906,11 @@ export default function EmployeeDetailPage() {
         {/* Right Column - Details Tabs */}
         <div className="lg:col-span-2">
           <Tabs defaultValue="personal" className="w-full">
-            <TabsList className="grid grid-cols-4 w-full">
+            <TabsList className={`grid ${isNgoOrProject ? "grid-cols-5" : "grid-cols-4"} w-full`}>
               <TabsTrigger value="personal">Personal</TabsTrigger>
               <TabsTrigger value="employment">Employment</TabsTrigger>
               <TabsTrigger value="compensation">Compensation</TabsTrigger>
+              {isNgoOrProject && <TabsTrigger value="funding">Funding & LOE</TabsTrigger>}
               <TabsTrigger value="audit">Audit</TabsTrigger>
             </TabsList>
 
@@ -1139,6 +1171,15 @@ export default function EmployeeDetailPage() {
               </Card>
             </TabsContent>
 
+
+            {/* Project Cost Allocation & LOE Tab */}
+            <TabsContent value="funding" className="mt-4">
+              <EmployeeCostAllocationTab
+                employeeId={id || ""}
+                basicSalary={employee?.basicSalary ? Number(employee.basicSalary) : 0}
+              />
+            </TabsContent>
+
             {/* Audit Tab */}
             <TabsContent value="audit" className="mt-4">
               <Card>
@@ -1227,9 +1268,9 @@ export default function EmployeeDetailPage() {
                             <p className="font-medium">
                               {employee.rejectedAt
                                 ? format(
-                                    new Date(employee.rejectedAt),
-                                    "PPP 'at' p",
-                                  )
+                                  new Date(employee.rejectedAt),
+                                  "PPP 'at' p",
+                                )
                                 : "-"}
                             </p>
                           </div>
@@ -1285,37 +1326,37 @@ export default function EmployeeDetailPage() {
             },
             ...(incrementValues.incrementMode === "AMOUNT"
               ? [
-                  {
-                    name: "incrementAmount",
-                    label: "Incremented Amount",
-                    type: "number",
-                    required: true,
-                  },
-                ]
+                {
+                  name: "incrementAmount",
+                  label: "Incremented Amount",
+                  type: "number",
+                  required: true,
+                },
+              ]
               : []),
             ...(incrementValues.incrementMode === "PERCENTAGE"
               ? [
-                  {
-                    name: "percentage",
-                    label: "Percentage (%)",
-                    type: "number",
-                    required: true,
-                  },
-                ]
+                {
+                  name: "percentage",
+                  label: "Percentage (%)",
+                  type: "number",
+                  required: true,
+                },
+              ]
               : []),
             ...(incrementValues.incrementMode === "SCALE"
               ? [
-                  {
-                    name: "toScaleId",
-                    label: "New Scale",
-                    type: "select",
-                    required: true,
-                    options: (lookupData.scales || []).map((s: any) => ({
-                      value: String(s.id),
-                      label: `${s.name}${typeof s.stepNumber !== "undefined" ? ` (Step ${s.stepNumber})` : ""}`,
-                    })),
-                  },
-                ]
+                {
+                  name: "toScaleId",
+                  label: "New Scale",
+                  type: "select",
+                  required: true,
+                  options: (lookupData.scales || []).map((s: any) => ({
+                    value: String(s.id),
+                    label: `${s.name}${typeof s.stepNumber !== "undefined" ? ` (Step ${s.stepNumber})` : ""}`,
+                  })),
+                },
+              ]
               : []),
             {
               name: "newBasicSalary",
@@ -1579,9 +1620,9 @@ export default function EmployeeDetailPage() {
         description={
           latestTermination
             ? `Last termination effective: ${format(
-                new Date(latestTermination.effectiveDate),
-                "PPP",
-              )}`
+              new Date(latestTermination.effectiveDate),
+              "PPP",
+            )}`
             : "Reinstate this employee"
         }
         fields={

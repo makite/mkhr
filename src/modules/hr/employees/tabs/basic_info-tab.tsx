@@ -143,7 +143,7 @@ export const BasicInfoTab = ({
               />
 
               <div className="p-4 space-y-4">
-                <div className="grid md:grid-cols-3 gap-4">
+                <div className="grid md:grid-cols-4 gap-4">
                   {/* Title */}
                   <FormField
                     control={form.control}
@@ -521,6 +521,43 @@ export const BasicInfoTab = ({
                               {s.name}
                             </SelectItem>
                           ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                                {/* Currency Dropdown */}
+                <FormField
+                  control={form.control}
+                  name="currency"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Currency</FormLabel>
+                      <Select
+                        value={field.value || "ETB"}
+                        onValueChange={field.onChange}
+                        disabled={readOnly}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select currency" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {(lookupData?.currencies && lookupData.currencies.length > 0) ? (
+                            lookupData.currencies.map((curr: any) => (
+                              <SelectItem key={curr.id || curr.code} value={curr.code}>
+                                {curr.code} {curr.value && curr.value !== curr.code ? `(${curr.value})` : ""}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <>
+                              <SelectItem value="ETB">ETB (Ethiopian Birr)</SelectItem>
+                              <SelectItem value="USD">USD (US Dollar)</SelectItem>
+                            </>
+                          )}
                         </SelectContent>
                       </Select>
                       <FormMessage />

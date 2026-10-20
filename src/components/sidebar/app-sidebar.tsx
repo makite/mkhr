@@ -42,9 +42,9 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const [navigationItems, setNavigationItems] = React.useState<NavItem[]>([]);
   const [navLoading, setNavLoading] = React.useState(true);
 
-  React.useEffect(() => {
+    React.useEffect(() => {
     let cancelled = false;
-    (async () => {
+    const fetchNav = async () => {
       try {
         setNavLoading(true);
         const items = await navigationService.getMyNavigation();
@@ -55,9 +55,13 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
       } finally {
         if (!cancelled) setNavLoading(false);
       }
-    })();
+    };
+
+    fetchNav();
+    window.addEventListener("company-branding-updated", fetchNav);
     return () => {
       cancelled = true;
+      window.removeEventListener("company-branding-updated", fetchNav);
     };
   }, []);
 

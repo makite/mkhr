@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
-import { CACHE_POLICIES } from "@/lib/query-client";
+import { CACHE_POLICIES, queryClient } from "@/lib/query-client";
 
 export type CompanyBranding = {
   colors?: {
@@ -18,6 +18,7 @@ export type PublicCompany = {
   legalName?: string;
   logo?: string | null;
   branding?: CompanyBranding;
+  organizationType?: string;
 };
 
 export interface CompanyBrandingData {
@@ -28,6 +29,7 @@ export interface CompanyBrandingData {
   secondaryColor: string;
   accentColor: string;
   logoUrl: string;
+  organizationType?: string;
 }
 
 export const DEFAULT_BRANDING: CompanyBrandingData = {
@@ -38,6 +40,7 @@ export const DEFAULT_BRANDING: CompanyBrandingData = {
   secondaryColor: "#ecf0f2",
   accentColor: "#0284c7",
   logoUrl: "/mk_logo.png",
+  organizationType: "COMMERCIAL",
 };
 
 export function stripTrailingApi(base: string): string {
@@ -97,6 +100,7 @@ export function getSavedBrandingPreferences() {
       },
       tagline: DEFAULT_BRANDING.tagline,
       logoUrl: DEFAULT_BRANDING.logoUrl,
+      organizationType: DEFAULT_BRANDING.organizationType,
     };
   }
   return {
@@ -109,6 +113,7 @@ export function getSavedBrandingPreferences() {
     },
     tagline: localStorage.getItem("company.brand.tagline") || DEFAULT_BRANDING.tagline,
     logoUrl: localStorage.getItem("company.logo.url") || DEFAULT_BRANDING.logoUrl,
+    organizationType: localStorage.getItem("company.organizationType") || DEFAULT_BRANDING.organizationType,
   };
 }
 
@@ -118,6 +123,7 @@ export function saveBrandingPreferences(branding: {
   colors?: { primary?: string; secondary?: string; accent?: string };
   tagline?: string;
   logoUrl?: string;
+  organizationType?: string;
 }) {
   if (typeof localStorage !== "undefined") {
     if (branding.companyName) localStorage.setItem("company.name", branding.companyName);
@@ -127,12 +133,16 @@ export function saveBrandingPreferences(branding: {
     if (branding.colors?.accent) localStorage.setItem("company.brand.accent", branding.colors.accent);
     if (branding.tagline !== undefined) localStorage.setItem("company.brand.tagline", branding.tagline);
     if (branding.logoUrl) localStorage.setItem("company.logo.url", branding.logoUrl);
+    if (branding.organizationType) localStorage.setItem("company.organizationType", branding.organizationType);
   }
   if (branding.colors?.primary) applyCssVar("--brand-primary", branding.colors.primary);
   if (branding.colors?.secondary) applyCssVar("--brand-secondary", branding.colors.secondary);
   if (branding.colors?.accent) applyCssVar("--brand-accent", branding.colors.accent);
   if (branding.logoUrl) applyCssVar("--company-logo-url", branding.logoUrl);
 
+  try {
+    queryClient.invalidateQueries({ queryKey: queryKeys.company.public() });
+  } catch {}
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("company-branding-updated"));
   }
@@ -156,6 +166,7 @@ export async function applyCompanyBranding(): Promise<CompanyBrandingData> {
       secondaryColor: saved.colors.secondary,
       accentColor: saved.colors.accent,
       logoUrl: saved.logoUrl,
+      organizationType: saved.organizationType || "NGO_NONPROFIT",
     };
   }
 
@@ -183,6 +194,7 @@ export async function applyCompanyBranding(): Promise<CompanyBrandingData> {
     const companyName = company?.name || saved.companyName;
     const legalName = company?.legalName || saved.legalName;
     const tagline = company?.branding?.tagline || saved.tagline;
+    const organizationType = company?.organizationType || saved.organizationType || "COMMERCIAL";
 
     // Apply CSS variables to root
     applyCssVar("--brand-primary", primary);
@@ -199,6 +211,7 @@ export async function applyCompanyBranding(): Promise<CompanyBrandingData> {
       if (secondary) localStorage.setItem("company.brand.secondary", secondary);
       if (accent) localStorage.setItem("company.brand.accent", accent);
       if (logoUrl) localStorage.setItem("company.logo.url", logoUrl);
+      if (organizationType) localStorage.setItem("company.organizationType", organizationType);
     }
 
     return {
@@ -209,6 +222,7 @@ export async function applyCompanyBranding(): Promise<CompanyBrandingData> {
       secondaryColor: secondary,
       accentColor: accent,
       logoUrl,
+      organizationType,
     };
   } catch {
     // Return saved preferences if API is unavailable
@@ -248,6 +262,7 @@ export function useCompanyBranding() {
       secondaryColor: saved.colors.secondary,
       accentColor: saved.colors.accent,
       logoUrl: saved.logoUrl,
+      organizationType: saved.organizationType || "NGO_NONPROFIT",
     },
     ...CACHE_POLICIES.STATIC_LOOKUPS,
   });

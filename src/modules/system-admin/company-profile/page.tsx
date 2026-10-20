@@ -29,6 +29,7 @@ type Company = {
   website?: string | null;
   taxId?: string | null;
   registrationNo?: string | null;
+  organizationType?: string | null;
   logo?: string | null;
   branding?: {
     tagline?: string | null;
@@ -160,6 +161,7 @@ export default function CompanyProfilePage() {
     website: "",
     taxId: "",
     registrationNo: "",
+    organizationType: "COMMERCIAL",
     address: "",
     city: "",
     state: "",
@@ -199,6 +201,7 @@ export default function CompanyProfilePage() {
         website: c?.website ?? "",
         taxId: c?.taxId ?? "",
         registrationNo: c?.registrationNo ?? "",
+        organizationType: c?.organizationType ?? "COMMERCIAL",
         address: c?.address ?? "",
         city: c?.city ?? "",
         state: c?.state ?? "",
@@ -276,6 +279,7 @@ export default function CompanyProfilePage() {
         website: form.website?.trim() || null,
         taxId: form.taxId?.trim() || null,
         registrationNo: form.registrationNo?.trim() || null,
+        organizationType: form.organizationType || "COMMERCIAL",
         address: form.address?.trim() || null,
         city: form.city?.trim() || null,
         state: form.state?.trim() || null,
@@ -289,6 +293,7 @@ export default function CompanyProfilePage() {
         setCompany(updated);
       }
 
+      localStorage.setItem("company.organizationType", form.organizationType || "COMMERCIAL");
       await applyCompanyBranding();
       window.dispatchEvent(new Event("company-branding-updated"));
 
@@ -413,7 +418,114 @@ export default function CompanyProfilePage() {
               General information about your business entity.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
+            {/* Organization Operating Persona */}
+            <div className="space-y-3 pb-2 border-b border-border/60">
+              <div>
+                <Label className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-indigo-600" />
+                  Organization & Industry Persona
+                </Label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Tailors ERP behavior, modules, and payroll accounting to your organization's legal and financial structure.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                <div
+                  onClick={() => setForm((p) => ({ ...p, organizationType: "COMMERCIAL" }))}
+                  className={`border-2 rounded-xl p-3.5 cursor-pointer transition-all flex flex-col justify-between ${
+                    form.organizationType === "COMMERCIAL"
+                      ? "border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/30 shadow-2xs"
+                      : "border-border/80 hover:border-border hover:bg-muted/20"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-xs text-foreground flex items-center gap-1.5">
+                      🏦 Commercial Enterprise
+                    </span>
+                    {form.organizationType === "COMMERCIAL" && (
+                      <span className="text-[10px] bg-indigo-600 text-white font-bold px-2 py-0.5 rounded-full">
+                        Active
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-1.5">
+                    For Banks, Microfinance, Trading PLCs, and Manufacturers. Direct branch/department payroll cost accounting.
+                  </p>
+                </div>
+
+                <div
+                  onClick={() => setForm((p) => ({ ...p, organizationType: "NGO_NONPROFIT" }))}
+                  className={`border-2 rounded-xl p-3.5 cursor-pointer transition-all flex flex-col justify-between ${
+                    form.organizationType === "NGO_NONPROFIT"
+                      ? "border-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/30 shadow-2xs"
+                      : "border-border/80 hover:border-border hover:bg-muted/20"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-xs text-foreground flex items-center gap-1.5">
+                      🤝 NGO & Non-Profit
+                    </span>
+                    {form.organizationType === "NGO_NONPROFIT" && (
+                      <span className="text-[10px] bg-emerald-600 text-white font-bold px-2 py-0.5 rounded-full">
+                        Active
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-1.5">
+                    For CSOs, Charities, UN Agencies, and Grant Programs. Activates donor grants, project budget lines, and Level of Effort (LOE) percentage splits.
+                  </p>
+                </div>
+
+                <div
+                  onClick={() => setForm((p) => ({ ...p, organizationType: "GOVERNMENT" }))}
+                  className={`border-2 rounded-xl p-3.5 cursor-pointer transition-all flex flex-col justify-between ${
+                    form.organizationType === "GOVERNMENT"
+                      ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30 shadow-2xs"
+                      : "border-border/80 hover:border-border hover:bg-muted/20"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-xs text-foreground flex items-center gap-1.5">
+                      🏛️ Government & Public Sector
+                    </span>
+                    {form.organizationType === "GOVERNMENT" && (
+                      <span className="text-[10px] bg-blue-600 text-white font-bold px-2 py-0.5 rounded-full">
+                        Active
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-1.5">
+                    For Ministries, Municipalities, and Public Agencies. Civil service scales and public accounting regulations.
+                  </p>
+                </div>
+
+                <div
+                  onClick={() => setForm((p) => ({ ...p, organizationType: "PROJECT_BASED_COMMERCIAL" }))}
+                  className={`border-2 rounded-xl p-3.5 cursor-pointer transition-all flex flex-col justify-between ${
+                    form.organizationType === "PROJECT_BASED_COMMERCIAL"
+                      ? "border-purple-600 bg-purple-50/50 dark:bg-purple-950/30 shadow-2xs"
+                      : "border-border/80 hover:border-border hover:bg-muted/20"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-xs text-foreground flex items-center gap-1.5">
+                      📐 Project-Based Commercial
+                    </span>
+                    {form.organizationType === "PROJECT_BASED_COMMERCIAL" && (
+                      <span className="text-[10px] bg-purple-600 text-white font-bold px-2 py-0.5 rounded-full">
+                        Active
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-1.5">
+                    For Consultancies, Contractors, and Engineering Firms. Client project billing without donor grant restrictions.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="company-name">

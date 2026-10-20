@@ -50,6 +50,7 @@ const HrActionsApprovalPage = lazy(
 );
 const HRReportsPage = lazy(() => import("./modules/hr/reports/page"));
 const UniversalImportPage = lazy(() => import("./modules/hr/import/page"));
+const ProjectsGrantsPage = lazy(() => import("./modules/hr/projects/page"));
 
 // Placeholder for missing modules
 const PlaceholderPage = lazy(() => import("./components/placeholder-page"));
@@ -246,6 +247,14 @@ createRoot(document.getElementById("root")!).render(
 
           <Route path="import" element={<UniversalImportPage />} />
           <Route path="/import" element={<UniversalImportPage />} />
+
+                    {/* Projects & Grants Management */}
+          <Route path="hr/projects" element={<ProjectsGrantsPage />} />
+          <Route path="/hr/projects" element={<ProjectsGrantsPage />} />
+          <Route path="hr-admin/projects" element={<ProjectsGrantsPage />} />
+          <Route path="/hr-admin/projects" element={<ProjectsGrantsPage />} />
+          <Route path="projects" element={<ProjectsGrantsPage />} />
+          <Route path="/projects" element={<ProjectsGrantsPage />} />
 
           {/* HR Reports & Aliases */}
           <Route path="hr/reports" element={<HRReportsPage />} />

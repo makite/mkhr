@@ -19,6 +19,7 @@ const emptyLookupData: EmployeeLookupData = {
   scales: [],
   branches: [],
   employees: [],
+  currencies: [],
   salaryMatrix: {},
 };
 
