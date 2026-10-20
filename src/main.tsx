@@ -49,6 +49,7 @@ const HrActionsApprovalPage = lazy(
   () => import("./modules/hr/actions-approval/page"),
 );
 const HRReportsPage = lazy(() => import("./modules/hr/reports/page"));
+const UniversalImportPage = lazy(() => import("./modules/hr/import/page"));
 
 // Placeholder for missing modules
 const PlaceholderPage = lazy(() => import("./components/placeholder-page"));
@@ -227,6 +228,24 @@ createRoot(document.getElementById("root")!).render(
           />
           <Route path="hr-actions" element={<HrActionsApprovalPage />} />
           <Route path="/hr-actions" element={<HrActionsApprovalPage />} />
+
+          {/* Data Import Hub & Aliases */}
+          <Route path="hr/import" element={<UniversalImportPage mode="hr" />} />
+          <Route path="/hr/import" element={<UniversalImportPage mode="hr" />} />
+          <Route path="hr-admin/import" element={<UniversalImportPage mode="hr" />} />
+          <Route path="/hr-admin/import" element={<UniversalImportPage mode="hr" />} />
+
+          <Route
+            path="system-admin/import"
+            element={<UniversalImportPage mode="system-admin" />}
+          />
+          <Route
+            path="/system-admin/import"
+            element={<UniversalImportPage mode="system-admin" />}
+          />
+
+          <Route path="import" element={<UniversalImportPage />} />
+          <Route path="/import" element={<UniversalImportPage />} />
 
           {/* HR Reports & Aliases */}
           <Route path="hr/reports" element={<HRReportsPage />} />

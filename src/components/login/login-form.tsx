@@ -7,7 +7,6 @@ import { cn } from "@/lib/utils";
 import { useCompanyBranding } from "@/services/company-branding";
 import {
   Mail,
-  Lock,
   Eye,
   EyeOff,
   ArrowRight,
