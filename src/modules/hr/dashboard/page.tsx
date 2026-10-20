@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
+  FileSpreadsheet,
   Users,
   UserPlus,
   Calendar,
@@ -23,6 +24,13 @@ export default function HRDashboard() {
     useDashboardData("hr");
 
   const quickActions = [
+    {
+      title: "Data Import Hub",
+      description: "Bulk import employees and lifecycle actions via Excel",
+      icon: FileSpreadsheet,
+      action: () => navigate("/hr/import"),
+      color: "bg-emerald-600",
+    },
     {
       title: "Add Employee",
       description: "Register a new employee",

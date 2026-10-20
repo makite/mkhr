@@ -38,6 +38,7 @@ const EmployeeAdminPage = lazy(() => import("../modules/hr/employees/components/
 const HRSettingsPage = lazy(() => import("../modules/hr/settings/page"));
 const HRActionsApprovalPage = lazy(() => import("../modules/hr/actions-approval/page"));
 const HRReportsPage = lazy(() => import("../modules/hr/reports/page"));
+const UniversalImportPage = lazy(() => import("../modules/hr/import/page"));
 
 // Temporary placeholder components for missing modules
 const PlaceholderPage = lazy(() => import("../components/placeholder-page"));
@@ -162,6 +163,44 @@ export const routeConfig: ExtendedRouteObject[] = [
           title: "Activities Report",
           module: "system-admin",
           roles: ["ADMIN", "SUPER_ADMIN"],
+        },
+      },
+
+      // Universal Bulk Data Import Hub
+      {
+        path: "hr/import",
+        element: <UniversalImportPage />,
+        meta: {
+          title: "Data Import Hub",
+          module: "hr",
+          roles: ["HR_ADMIN", "HR_MANAGER", "SUPER_ADMIN", "HR", "ADMIN"],
+        },
+      },
+      {
+        path: "hr-admin/import",
+        element: <UniversalImportPage />,
+        meta: {
+          title: "Data Import Hub",
+          module: "hr-admin",
+          roles: ["HR_ADMIN", "HR_MANAGER", "SUPER_ADMIN", "HR", "ADMIN"],
+        },
+      },
+      {
+        path: "system-admin/import",
+        element: <UniversalImportPage />,
+        meta: {
+          title: "Data Import Hub",
+          module: "system-admin",
+          roles: ["SYSTEM_ADMIN", "SUPER_ADMIN", "ADMIN"],
+        },
+      },
+      {
+        path: "import",
+        element: <UniversalImportPage />,
+        meta: {
+          title: "Data Import Hub",
+          module: "hr",
+          roles: ["HR_ADMIN", "HR_MANAGER", "SUPER_ADMIN", "HR", "ADMIN"],
         },
       },
 

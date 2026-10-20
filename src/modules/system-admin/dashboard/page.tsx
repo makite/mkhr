@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  FileSpreadsheet,
   Users,
   Building,
   Settings,
@@ -22,6 +23,13 @@ export default function SystemAdminDashboard() {
     useDashboardData("system-admin");
 
   const quickActions = [
+    {
+      title: "Data Import Hub",
+      description: "Bulk import employees and lifecycle actions via Excel",
+      icon: FileSpreadsheet,
+      action: () => navigate("/system-admin/import"),
+      color: "bg-emerald-600",
+    },
     {
       title: "User Management",
       description: "Add, edit, and manage user accounts",
