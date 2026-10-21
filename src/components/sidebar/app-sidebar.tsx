@@ -3,7 +3,6 @@
 import * as React from "react";
 import {
   ChevronDown,
-  Settings,
   HelpCircle,
   Search,
   LayoutDashboard,
@@ -304,16 +303,6 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                 {isExpanded && (
                   <span className="font-medium">Help & Support</span>
                 )}
-              </Link>
-
-              <Link
-                to="/settings"
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-accent text-muted-foreground hover:text-accent-foreground transition-all duration-200 group ${
-                  !isExpanded ? "justify-center" : ""
-                }`}
-              >
-                <Settings className="h-5 w-5 transition-transform group-hover:scale-110" />
-                {isExpanded && <span className="font-medium">Settings</span>}
               </Link>
 
               {/* <button
