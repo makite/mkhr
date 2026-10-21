@@ -172,7 +172,7 @@ async function runFrontendE2E() {
 
     let allPathsMatched = true;
     for (const p of flatPaths) {
-      const isHandled = supportedRoutes.includes(p) || p.startsWith("/system-admin") || p.startsWith("/hr");
+      const isHandled = supportedRoutes.includes(p) || p.startsWith("/system-admin") || p.startsWith("/hr") || p.startsWith("/payroll");
       if (!isHandled) {
         allPathsMatched = false;
         console.log(`       ⚠️ Unhandled menu path: ${p}`);

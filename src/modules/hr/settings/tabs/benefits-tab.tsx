@@ -63,7 +63,7 @@ const DEFAULT_BENEFIT_UNITS: LookupItem[] = [
 
 export function BenefitsTab() {
   const { toast } = useToast();
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [types, setTypes] = useState<BenefitType[]>([]);
   const [assignments, setAssignments] = useState<BenefitAssignment[]>([]);
   const [positions, setPositions] = useState<RefItem[]>([]);

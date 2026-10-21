@@ -52,6 +52,13 @@ const HRReportsPage = lazy(() => import("./modules/hr/reports/page"));
 const UniversalImportPage = lazy(() => import("./modules/hr/import/page"));
 const ProjectsGrantsPage = lazy(() => import("./modules/hr/projects/page"));
 
+// Payroll Management
+const PayrollDashboardPage = lazy(() => import("./modules/payroll/pages/payroll-dashboard-page"));
+const PayrollProcessingPage = lazy(() => import("./modules/payroll/pages/payroll-processing-page"));
+const PayrollSetupPage = lazy(() => import("./modules/payroll/pages/payroll-setup-page"));
+const PayrollTransactionsPage = lazy(() => import("./modules/payroll/pages/payroll-transactions-page"));
+const PayrollEmployeesPage = lazy(() => import("./modules/payroll/pages/payroll-employees-page"));
+
 // Placeholder for missing modules
 const PlaceholderPage = lazy(() => import("./components/placeholder-page"));
 
@@ -284,18 +291,37 @@ createRoot(document.getElementById("root")!).render(
           />
           <Route path="/self-service/dashboard" element={<PlaceholderPage />} />
           <Route path="/help" element={<PlaceholderPage />} />
-          <Route
-            path="/payroll-management/dashboard"
-            element={<PlaceholderPage />}
-          />
-          <Route
-            path="/payroll-management/list"
-            element={<PlaceholderPage />}
-          />
-          <Route
-            path="/payroll-management/reports"
-            element={<PlaceholderPage />}
-          />
+          {/* Payroll Management & Aliases */}
+          <Route path="payroll" element={<PayrollDashboardPage />} />
+          <Route path="/payroll" element={<PayrollDashboardPage />} />
+          <Route path="payroll/dashboard" element={<PayrollDashboardPage />} />
+          <Route path="/payroll/dashboard" element={<PayrollDashboardPage />} />
+          <Route path="payroll-management" element={<PayrollDashboardPage />} />
+          <Route path="/payroll-management" element={<PayrollDashboardPage />} />
+          <Route path="payroll-management/dashboard" element={<PayrollDashboardPage />} />
+          <Route path="/payroll-management/dashboard" element={<PayrollDashboardPage />} />
+
+          <Route path="payroll/processing" element={<PayrollProcessingPage />} />
+          <Route path="/payroll/processing" element={<PayrollProcessingPage />} />
+          <Route path="payroll-management/processing" element={<PayrollProcessingPage />} />
+          <Route path="/payroll-management/processing" element={<PayrollProcessingPage />} />
+          <Route path="payroll-management/list" element={<PayrollProcessingPage />} />
+          <Route path="/payroll-management/list" element={<PayrollProcessingPage />} />
+
+          <Route path="payroll/transactions" element={<PayrollTransactionsPage />} />
+          <Route path="/payroll/transactions" element={<PayrollTransactionsPage />} />
+          <Route path="payroll-management/transactions" element={<PayrollTransactionsPage />} />
+          <Route path="/payroll-management/transactions" element={<PayrollTransactionsPage />} />
+
+          <Route path="payroll/employees" element={<PayrollEmployeesPage />} />
+          <Route path="/payroll/employees" element={<PayrollEmployeesPage />} />
+          <Route path="payroll-management/employees" element={<PayrollEmployeesPage />} />
+          <Route path="/payroll-management/employees" element={<PayrollEmployeesPage />} />
+
+          <Route path="payroll/setup" element={<PayrollSetupPage />} />
+          <Route path="/payroll/setup" element={<PayrollSetupPage />} />
+          <Route path="payroll-management/setup" element={<PayrollSetupPage />} />
+          <Route path="/payroll-management/setup" element={<PayrollSetupPage />} />
         </Route>
 
         {/* 404 Fallback */}
