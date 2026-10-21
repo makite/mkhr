@@ -1,58 +1,95 @@
-import { useEffect, useState } from "react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { type OvertimeRate, payrollService } from "../services/payroll-service";
-import { toast } from "sonner";
+import React, { useMemo } from "react";
+import { type ColumnDef } from "@tanstack/react-table";
+import { DataTable } from "@/components/shared/table-data";
+import { Badge } from "@/components/ui/badge";
+import { type OvertimeRate } from "../services/payroll-service";
+import { usePayrollOvertimeRates } from "../services/use-payroll-queries";
+import { Clock, ShieldCheck } from "lucide-react";
 
 export const OvertimeTab: React.FC = () => {
-  const [rates, setRates] = useState<OvertimeRate[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: rates = [], isLoading, refetch } = usePayrollOvertimeRates();
 
-  useEffect(() => {
-    payrollService.getOvertimeRates()
-      .then(setRates)
-      .catch((err) => toast.error(err.message || "Failed to load overtime rates."))
-      .finally(() => setLoading(false));
-  }, []);
+  const columns = useMemo<ColumnDef<OvertimeRate>[]>(
+    () => [
+      {
+        accessorKey: "code",
+        header: "OT Code",
+        cell: ({ row }) => (
+          <span className="font-mono font-bold text-xs text-primary">
+            {row.original.code}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "name",
+        header: "Overtime Category / Period Description",
+        cell: ({ row }) => (
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-primary shrink-0" />
+            <span className="font-semibold text-foreground text-sm">{row.original.name}</span>
+          </div>
+        ),
+      },
+      {
+        accessorKey: "rateMultiplier",
+        header: () => <div className="text-right">Multiplier Rate</div>,
+        cell: ({ row }) => (
+          <div className="text-right">
+            <Badge
+              variant="outline"
+              className="font-mono text-xs font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20"
+            >
+              {row.original.rateMultiplier}x Hourly Base
+            </Badge>
+          </div>
+        ),
+      },
+      {
+        accessorKey: "isActive",
+        header: "Status",
+        cell: ({ row }) => (
+          <Badge
+            variant="outline"
+            className={
+              row.original.isActive
+                ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20"
+                : "bg-muted text-muted-foreground"
+            }
+          >
+            {row.original.isActive ? "Active Policy" : "Inactive"}
+          </Badge>
+        ),
+      },
+    ],
+    []
+  );
 
   return (
     <div className="space-y-4">
-      <div className="p-4 bg-blue-50/50 border border-blue-200 rounded-lg text-sm text-blue-900">
-        <strong>Statutory Regulation:</strong> Ethiopian Labour Proclamation No. 1156/2019.
-        Multipliers apply to the hourly base rate (Basic Salary / 200 regular working hours).
+      {/* Statutory Regulation Card */}
+      <div className="flex items-start gap-3 p-4 bg-primary/5 border border-primary/20 rounded-xl text-xs text-foreground">
+        <ShieldCheck className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+        <div>
+          <strong className="font-semibold text-primary block text-sm">
+            Statutory Regulation: Ethiopian Labour Proclamation No. 1156/2019
+          </strong>
+          <p className="text-muted-foreground mt-0.5">
+            Overtime compensation formula: <code>(Basic Salary / 200 standard monthly hours) × Multiplier Rate × Overtime Hours</code>.
+            Rate tiers apply strictly based on whether hours occurred during day (1.5x), night (1.75x), weekly rest day (2.0x), or public holidays (2.5x).
+          </p>
+        </div>
       </div>
 
-      <div className="border rounded-lg overflow-x-auto bg-white">
-        <Table>
-          <TableHeader className="bg-gray-50">
-            <TableRow>
-              <TableHead className="w-24">OT Code</TableHead>
-              <TableHead>Category / Period Description</TableHead>
-              <TableHead className="text-right">Multiplier Rate</TableHead>
-              <TableHead className="w-28 text-center">Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center py-8 text-gray-500">
-                  Loading overtime rates...
-                </TableCell>
-              </TableRow>
-            ) : rates.map((r) => (
-              <TableRow key={r.id}>
-                <TableCell className="font-mono font-bold text-blue-600">{r.code}</TableCell>
-                <TableCell className="font-medium">{r.name}</TableCell>
-                <TableCell className="text-right font-mono font-bold text-emerald-700">
-                  {r.rateMultiplier}x
-                </TableCell>
-                <TableCell className="text-center">
-                  <span className={`inline-block w-2.5 h-2.5 rounded-full ${r.isActive ? "bg-emerald-500" : "bg-gray-300"}`} />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+      <DataTable
+        title="Statutory Overtime Multiplier Matrices"
+        description="Prescribed hourly multipliers under Article 68 of Ethiopian Labour Proclamation No. 1156/2019."
+        columns={columns}
+        data={rates}
+        loading={isLoading}
+        searchPlaceholder="Search overtime tiers..."
+        onRefresh={() => refetch()}
+        showPagination={false}
+      />
     </div>
   );
 };

@@ -277,6 +277,98 @@ async function runFrontendE2E() {
     assert("GET /benefits/assignments returns assignments list", rBenefitAssign.status === 200);
   }
 
+  // ── 8. Payroll Management & Compensation Contracts ────────────────────────
+  console.log("\n[8/8] Payroll Management & Statutory Compensation Contracts");
+  {
+    const rPayrollDash = await req(`${BACKEND_URL}/api/payroll/dashboard/stats`, {
+      headers: { "Authorization": `Bearer ${token}`, "Origin": FRONTEND_URL },
+    });
+    assert(
+      "GET /payroll/dashboard/stats returns executive compensation analytics",
+      rPayrollDash.status === 200 && rPayrollDash.data?.success
+    );
+
+    const rPeriods = await req(`${BACKEND_URL}/api/payroll/setup/periods`, {
+      headers: { "Authorization": `Bearer ${token}`, "Origin": FRONTEND_URL },
+    });
+    assert(
+      "GET /payroll/setup/periods returns fiscal periods list",
+      rPeriods.status === 200 && Array.isArray(rPeriods.data?.data)
+    );
+
+    const rCurrentPeriod = await req(`${BACKEND_URL}/api/payroll/setup/current-period`, {
+      headers: { "Authorization": `Bearer ${token}`, "Origin": FRONTEND_URL },
+    });
+    assert(
+      "GET /payroll/setup/current-period returns active fiscal cycle",
+      rCurrentPeriod.status === 200 && rCurrentPeriod.data?.data?.id
+    );
+
+    const rTransTypes = await req(`${BACKEND_URL}/api/payroll/setup/transaction-types`, {
+      headers: { "Authorization": `Bearer ${token}`, "Origin": FRONTEND_URL },
+    });
+    assert(
+      "GET /payroll/setup/transaction-types returns compensation rule definitions",
+      rTransTypes.status === 200 && Array.isArray(rTransTypes.data?.data)
+    );
+
+    const rTaxBrackets = await req(`${BACKEND_URL}/api/payroll/setup/tax-brackets`, {
+      headers: { "Authorization": `Bearer ${token}`, "Origin": FRONTEND_URL },
+    });
+    assert(
+      "GET /payroll/setup/tax-brackets returns Proc 979/2016 statutory tax tiers",
+      rTaxBrackets.status === 200 && Array.isArray(rTaxBrackets.data?.data)
+    );
+
+    const rBanks = await req(`${BACKEND_URL}/api/payroll/setup/banks`, {
+      headers: { "Authorization": `Bearer ${token}`, "Origin": FRONTEND_URL },
+    });
+    assert(
+      "GET /payroll/setup/banks returns licensed commercial banks",
+      rBanks.status === 200 && Array.isArray(rBanks.data?.data)
+    );
+
+    const rOvertime = await req(`${BACKEND_URL}/api/payroll/setup/overtime-rates`, {
+      headers: { "Authorization": `Bearer ${token}`, "Origin": FRONTEND_URL },
+    });
+    assert(
+      "GET /payroll/setup/overtime-rates returns Proc 1156/2019 overtime multipliers",
+      rOvertime.status === 200 && Array.isArray(rOvertime.data?.data)
+    );
+
+    const rProfiles = await req(`${BACKEND_URL}/api/payroll/employees/profiles`, {
+      headers: { "Authorization": `Bearer ${token}`, "Origin": FRONTEND_URL },
+    });
+    assert(
+      "GET /payroll/employees/profiles returns employee disbursement profiles",
+      rProfiles.status === 200 && Array.isArray(rProfiles.data?.data)
+    );
+
+    const rTransactions = await req(`${BACKEND_URL}/api/payroll/transactions`, {
+      headers: { "Authorization": `Bearer ${token}`, "Origin": FRONTEND_URL },
+    });
+    assert(
+      "GET /payroll/transactions returns active variable entries",
+      rTransactions.status === 200 && Array.isArray(rTransactions.data?.data)
+    );
+
+    const rLoans = await req(`${BACKEND_URL}/api/payroll/transactions/loans`, {
+      headers: { "Authorization": `Bearer ${token}`, "Origin": FRONTEND_URL },
+    });
+    assert(
+      "GET /payroll/transactions/loans returns staff loan agreements",
+      rLoans.status === 200 && Array.isArray(rLoans.data?.data)
+    );
+
+    const rCostSharing = await req(`${BACKEND_URL}/api/payroll/transactions/cost-sharing`, {
+      headers: { "Authorization": `Bearer ${token}`, "Origin": FRONTEND_URL },
+    });
+    assert(
+      "GET /payroll/transactions/cost-sharing returns higher education cost-sharing records",
+      rCostSharing.status === 200 && Array.isArray(rCostSharing.data?.data)
+    );
+  }
+
   // ── Final Summary ────────────────────────────────────────────────────────
   console.log("\n" + "=".repeat(65));
   console.log("📊 FRONTEND END-TO-END ALIGNMENT RESULTS");

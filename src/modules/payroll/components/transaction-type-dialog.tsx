@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { type TransactionType, payrollService } from "../services/payroll-service";
 import { toast } from "sonner";
+import { Settings2 } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -113,7 +114,8 @@ export const TransactionTypeDialog: React.FC<Props> = ({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold flex items-center gap-2">
-            ⚙️ {transactionType ? "Edit Transaction Setting / Type" : "New Transaction Setting / Type"}
+            <Settings2 className="w-5 h-5 text-primary" />{" "}
+            {transactionType ? "Edit Transaction Setting / Type" : "New Transaction Setting / Type"}
           </DialogTitle>
         </DialogHeader>
 

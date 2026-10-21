@@ -1,118 +1,171 @@
-import { useEffect, useState } from "react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import React, { useState, useMemo } from "react";
+import { type ColumnDef } from "@tanstack/react-table";
+import { DataTable } from "@/components/shared/table-data";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { type Bank, payrollService } from "../services/payroll-service";
-import { toast } from "sonner";
+import { type Bank } from "../services/payroll-service";
+import { usePayrollBanks, useSaveBankMutation } from "../services/use-payroll-queries";
+import { Landmark } from "lucide-react";
 
 export const BanksTab: React.FC = () => {
-  const [banks, setBanks] = useState<Bank[]>([]);
-  const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [swiftCode, setSwiftCode] = useState("");
-  const [saving, setSaving] = useState(false);
 
-  const fetchBanks = async () => {
-    setLoading(true);
-    try {
-      const data = await payrollService.getBanks();
-      setBanks(data);
-    } catch (err: any) {
-      toast.error(err.message || "Failed to load banks.");
-    } finally {
-      setLoading(false);
-    }
+  const { data: banks = [], isLoading, refetch } = usePayrollBanks();
+  const saveMutation = useSaveBankMutation();
+
+  const resetForm = () => {
+    setCode("");
+    setName("");
+    setSwiftCode("");
   };
-
-  useEffect(() => {
-    fetchBanks();
-  }, []);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!code || !name) {
-      toast.error("Code and Name are required.");
-      return;
-    }
-    setSaving(true);
-    try {
-      await payrollService.saveBank({ code, name, swiftCode, isActive: true });
-      toast.success("Bank added successfully.");
-      setDialogOpen(false);
-      setCode("");
-      setName("");
-      setSwiftCode("");
-      fetchBanks();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to save bank.");
-    } finally {
-      setSaving(false);
-    }
+    if (!code || !name) return;
+
+    await saveMutation.mutateAsync({
+      code: code.trim().toUpperCase(),
+      name: name.trim(),
+      swiftCode: swiftCode.trim().toUpperCase() || undefined,
+      isActive: true,
+    });
+
+    setDialogOpen(false);
+    resetForm();
   };
+
+  const columns = useMemo<ColumnDef<Bank>[]>(
+    () => [
+      {
+        accessorKey: "code",
+        header: "Bank Code",
+        cell: ({ row }) => (
+          <span className="font-mono font-bold text-xs text-primary">
+            {row.original.code}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "name",
+        header: "Financial Institution Name",
+        cell: ({ row }) => (
+          <div className="flex items-center gap-2">
+            <Landmark className="w-4 h-4 text-primary shrink-0" />
+            <span className="font-semibold text-foreground text-sm">{row.original.name}</span>
+          </div>
+        ),
+      },
+      {
+        accessorKey: "swiftCode",
+        header: "SWIFT / BIC Code",
+        cell: ({ row }) => (
+          <span className="font-mono text-xs text-muted-foreground">
+            {row.original.swiftCode || "—"}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "isActive",
+        header: "Status",
+        cell: ({ row }) => (
+          <Badge
+            variant="outline"
+            className={
+              row.original.isActive
+                ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20"
+                : "bg-muted text-muted-foreground"
+            }
+          >
+            {row.original.isActive ? "Active Disburser" : "Inactive"}
+          </Badge>
+        ),
+      },
+    ],
+    []
+  );
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h3 className="text-base font-semibold text-gray-700">Ethiopian Commercial Banks Registry</h3>
-        <Button onClick={() => setDialogOpen(true)}>➕ Add Bank</Button>
-      </div>
-
-      <div className="border rounded-lg overflow-x-auto bg-white">
-        <Table>
-          <TableHeader className="bg-gray-50">
-            <TableRow>
-              <TableHead className="w-24">Bank Code</TableHead>
-              <TableHead>Bank Name</TableHead>
-              <TableHead>SWIFT / BIC Code</TableHead>
-              <TableHead className="w-24 text-center">Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center py-8 text-gray-500">
-                  Loading banks...
-                </TableCell>
-              </TableRow>
-            ) : banks.map((b) => (
-              <TableRow key={b.id}>
-                <TableCell className="font-mono font-bold text-blue-600">{b.code}</TableCell>
-                <TableCell className="font-medium">{b.name}</TableCell>
-                <TableCell className="font-mono text-xs">{b.swiftCode || "-"}</TableCell>
-                <TableCell className="text-center">
-                  <span className={`inline-block w-2.5 h-2.5 rounded-full ${b.isActive ? "bg-emerald-500" : "bg-gray-300"}`} />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+      <DataTable
+        title="Commercial Banks Directory"
+        description="National Bank of Ethiopia licensed commercial banks for electronic payroll direct deposit files."
+        columns={columns}
+        data={banks}
+        loading={isLoading}
+        searchPlaceholder="Search banks by name or code..."
+        onAdd={() => {
+          resetForm();
+          setDialogOpen(true);
+        }}
+        onRefresh={() => refetch()}
+        pageSize={10}
+      />
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold">Add Ethiopian Bank</DialogTitle>
+            <DialogTitle className="text-lg font-bold flex items-center gap-2">
+              <Landmark className="w-5 h-5 text-primary" /> Register Commercial Bank
+            </DialogTitle>
+            <DialogDescription>
+              Add a commercial bank or financial institution for employee account validation and
+              direct batch deposit transfers.
+            </DialogDescription>
           </DialogHeader>
+
           <form onSubmit={handleSave} className="space-y-4 py-2">
-            <div>
-              <Label htmlFor="bankCode">Bank Code *</Label>
-              <Input id="bankCode" placeholder="e.g. CBE" value={code} onChange={(e) => setCode(e.target.value)} required />
+            <div className="space-y-1.5">
+              <Label htmlFor="bankCodeInput">Bank Code *</Label>
+              <Input
+                id="bankCodeInput"
+                placeholder="e.g. CBE, AWASH, BOA, DAShen"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                required
+              />
             </div>
-            <div>
-              <Label htmlFor="bankName">Bank Name *</Label>
-              <Input id="bankName" placeholder="e.g. Commercial Bank of Ethiopia" value={name} onChange={(e) => setName(e.target.value)} required />
+
+            <div className="space-y-1.5">
+              <Label htmlFor="bankNameInput">Commercial Bank Name *</Label>
+              <Input
+                id="bankNameInput"
+                placeholder="e.g. Commercial Bank of Ethiopia"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
             </div>
-            <div>
-              <Label htmlFor="swift">SWIFT Code</Label>
-              <Input id="swift" placeholder="e.g. CBETETAA" value={swiftCode} onChange={(e) => setSwiftCode(e.target.value)} />
+
+            <div className="space-y-1.5">
+              <Label htmlFor="swiftInput">SWIFT / BIC Routing Code</Label>
+              <Input
+                id="swiftInput"
+                placeholder="e.g. CBETETAA"
+                value={swiftCode}
+                onChange={(e) => setSwiftCode(e.target.value)}
+              />
             </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={saving}>{saving ? "Saving..." : "Save Bank"}</Button>
+
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={saveMutation.isPending || !code || !name}>
+                {saveMutation.isPending ? "Registering..." : "Add Bank"}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>

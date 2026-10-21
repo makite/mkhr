@@ -49,4 +49,24 @@ export const queryKeys = {
   company: {
     public: () => ["company", "public"] as const,
   },
+  payroll: {
+    all: ["payroll"] as const,
+    dashboard: () => ["payroll", "dashboard"] as const,
+    periods: (fiscalYearId?: string) => ["payroll", "periods", fiscalYearId] as const,
+    currentPeriod: () => ["payroll", "current-period"] as const,
+    transactionTypes: () => ["payroll", "transaction-types"] as const,
+    taxBrackets: () => ["payroll", "tax-brackets"] as const,
+    banks: () => ["payroll", "banks"] as const,
+    overtimeRates: () => ["payroll", "overtime-rates"] as const,
+    transactions: (params?: Record<string, unknown>) =>
+      ["payroll", "transactions", params] as const,
+    loans: (employeeId?: string) => ["payroll", "loans", employeeId] as const,
+    costSharing: (employeeId?: string) => ["payroll", "cost-sharing", employeeId] as const,
+    employeeProfiles: (params?: Record<string, unknown>) =>
+      ["payroll", "employee-profiles", params] as const,
+    register: (params: { periodId: string; branchId?: string; page?: number; limit?: number }) =>
+      ["payroll", "register", params] as const,
+    glJournal: (params: { periodId: string; branchId?: string }) =>
+      ["payroll", "gl-journal", params] as const,
+  },
 } as const;

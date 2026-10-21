@@ -1,267 +1,329 @@
-import { useEffect, useState, useMemo } from "react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import React, { useState, useMemo } from "react";
+import { type ColumnDef } from "@tanstack/react-table";
+import { DataTable } from "@/components/shared/table-data";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, GraduationCap, DollarSign, Users, Plus } from "lucide-react";
-import { payrollService } from "../services/payroll-service";
-import { useCompanyBranding } from "@/services/company-branding";
-import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  usePayrollCostSharing,
+  usePayrollEmployeeProfiles,
+  useSaveCostSharingMutation,
+} from "../services/use-payroll-queries";
+import { formatETB } from "@/lib/utils";
+import { GraduationCap, DollarSign, Wallet, Users } from "lucide-react";
 
 export const CostSharingTab: React.FC = () => {
-  const branding = useCompanyBranding();
-  const [items, setItems] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [employees, setEmployees] = useState<any[]>([]);
-  const [search, setSearch] = useState("");
+
+  // Queries
+  const { data: items = [], isLoading: isCostLoading, refetch } = usePayrollCostSharing();
+  const { data: employees = [] } = usePayrollEmployeeProfiles();
+
+  // Mutation
+  const saveMutation = useSaveCostSharingMutation();
 
   // Form State
   const [employeeId, setEmployeeId] = useState("");
   const [university, setUniversity] = useState("");
-  const [totalCost, setTotalCost] = useState<number>(0);
-  const [saving, setSaving] = useState(false);
+  const [totalCost, setTotalCost] = useState<number | "">("");
 
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const [costData, profs] = await Promise.all([
-        payrollService.getCostSharing(),
-        payrollService.getEmployeeProfiles(),
-      ]);
-      setItems(costData || []);
-      setEmployees(profs || []);
-    } catch (err: any) {
-      toast.error(err.message || "Failed to load cost sharing records.");
-    } finally {
-      setLoading(false);
-    }
+  const resetForm = () => {
+    setEmployeeId("");
+    setUniversity("");
+    setTotalCost("");
   };
-
-  useEffect(() => {
-    loadData();
-  }, []);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!employeeId || !totalCost) {
-      toast.error("Please fill in all required fields.");
-      return;
-    }
-    setSaving(true);
-    try {
-      await payrollService.saveCostSharing({
-        employeeId,
-        university: university.trim() || "Higher Education Institution",
-        totalObligation: Number(totalCost),
-        remainingBalance: Number(totalCost),
-        deductionPercent: 0.10, // 10% statutory higher ed deduction
-        status: "ACTIVE",
-      });
-      toast.success("Higher education cost sharing recorded successfully.");
-      setDialogOpen(false);
-      setTotalCost(0);
-      setUniversity("");
-      setEmployeeId("");
-      await loadData();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to save cost sharing.");
-    } finally {
-      setSaving(false);
-    }
+    if (!employeeId || !totalCost) return;
+
+    await saveMutation.mutateAsync({
+      employeeId,
+      university: university.trim() || "Public Higher Education Institution",
+      totalObligation: Number(totalCost),
+      remainingBalance: Number(totalCost),
+      deductionPercent: 0.1, // 10% Ethiopian statutory higher education cost sharing
+      status: "ACTIVE",
+    });
+
+    setDialogOpen(false);
+    resetForm();
   };
 
-  const filteredItems = useMemo(() => {
-    if (!search.trim()) return items;
-    const q = search.toLowerCase();
-    return items.filter((cs) => {
-      const name = (cs.employee?.fullName || "").toLowerCase();
-      const empCode = (cs.employee?.employeeId || "").toLowerCase();
-      const uni = (cs.university || cs.universityName || "").toLowerCase();
-      return name.includes(q) || empCode.includes(q) || uni.includes(q);
-    });
-  }, [items, search]);
+  // Aggregations
+  const totalObligations = useMemo(
+    () => items.reduce((sum, cs) => sum + Number(cs.totalObligation || cs.totalCommitment || 0), 0),
+    [items]
+  );
+  const totalRemaining = useMemo(
+    () => items.reduce((sum, cs) => sum + Number(cs.remainingBalance || 0), 0),
+    [items]
+  );
+  const activeCount = useMemo(
+    () => items.filter((cs) => cs.status === "ACTIVE" || !cs.status).length,
+    [items]
+  );
 
-  const totalObligations = useMemo(() => {
-    return items.reduce((sum, cs) => sum + Number(cs.totalObligation || cs.totalCommitment || 0), 0);
-  }, [items]);
+  const columns = useMemo<ColumnDef<any>[]>(
+    () => [
+      {
+        accessorKey: "employee",
+        header: "Beneficiary Employee",
+        cell: ({ row }) => {
+          const emp = row.original.employee;
+          return (
+            <div className="flex flex-col">
+              <span className="font-semibold text-foreground text-sm">
+                {emp?.fullName || row.original.fullName || "-"}
+              </span>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="font-mono">{emp?.employeeId || row.original.employeeId || "-"}</span>
+                {emp?.fullNameAm && (
+                  <span className="font-amharic text-[11px] text-muted-foreground/80">
+                    ({emp.fullNameAm})
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: "university",
+        header: "University / College",
+        cell: ({ row }) => (
+          <div className="flex items-center gap-2">
+            <GraduationCap className="w-4 h-4 text-primary shrink-0" />
+            <span className="text-sm font-medium">
+              {row.original.university || row.original.universityName || "Higher Education"}
+            </span>
+          </div>
+        ),
+      },
+      {
+        accessorKey: "totalObligation",
+        header: () => <div className="text-right">Total Obligation</div>,
+        cell: ({ row }) => (
+          <div className="text-right font-mono font-medium text-foreground text-sm">
+            {formatETB(row.original.totalObligation || row.original.totalCommitment)}
+          </div>
+        ),
+      },
+      {
+        accessorKey: "deductionPercent",
+        header: () => <div className="text-center">Rate</div>,
+        cell: () => (
+          <div className="text-center">
+            <Badge variant="outline" className="font-mono text-xs bg-primary/5 text-primary">
+              10% Statutory
+            </Badge>
+          </div>
+        ),
+      },
+      {
+        accessorKey: "remainingBalance",
+        header: () => <div className="text-right">Remaining Balance</div>,
+        cell: ({ row }) => {
+          const rem = Number(row.original.remainingBalance || 0);
+          const total = Number(row.original.totalObligation || row.original.totalCommitment || 1);
+          const pctPaid = Math.max(0, Math.min(100, Math.round(((total - rem) / total) * 100)));
 
-  const totalRemaining = useMemo(() => {
-    return items.reduce((sum, cs) => sum + Number(cs.remainingBalance || 0), 0);
-  }, [items]);
-
-  const primaryColor = branding?.primaryColor || "#1e40af";
+          return (
+            <div className="flex flex-col items-end gap-1">
+              <span className="font-mono font-bold text-sm text-foreground">
+                {formatETB(rem)}
+              </span>
+              <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-500 rounded-full transition-all"
+                    style={{ width: `${pctPaid}%` }}
+                  />
+                </div>
+                <span>{pctPaid}% paid</span>
+              </div>
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: "status",
+        header: "Status",
+        cell: ({ row }) => {
+          const status = row.original.status || "ACTIVE";
+          const isAct = status === "ACTIVE";
+          return (
+            <Badge
+              variant="outline"
+              className={
+                isAct
+                  ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20"
+                  : "bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-500/20"
+              }
+            >
+              {status}
+            </Badge>
+          );
+        },
+      },
+    ],
+    []
+  );
 
   return (
     <div className="space-y-6">
-      {/* Overview Metric Cards */}
+      {/* Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="border shadow-xs">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2.5 rounded-lg bg-blue-50 text-blue-700">
-              <Users className="w-5 h-5" />
+        <Card className="border shadow-2xs">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">Total University Obligations</p>
+              <h3 className="text-xl font-bold font-mono tracking-tight text-foreground">
+                {formatETB(totalObligations)}
+              </h3>
             </div>
-            <div>
-              <p className="text-xs text-gray-500 font-medium">Registered Beneficiaries</p>
-              <h4 className="text-lg font-bold text-gray-900">{items.length} Employees</h4>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border shadow-xs">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2.5 rounded-lg bg-amber-50 text-amber-700">
+            <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
               <DollarSign className="w-5 h-5" />
             </div>
-            <div>
-              <p className="text-xs text-gray-500 font-medium">Total Ministry Obligation</p>
-              <h4 className="text-lg font-bold text-gray-900">ETB {totalObligations.toLocaleString("en-US", { minimumFractionDigits: 2 })}</h4>
+          </CardContent>
+        </Card>
+
+        <Card className="border shadow-2xs">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">Remaining Student Loan Debt</p>
+              <h3 className="text-xl font-bold font-mono tracking-tight text-foreground">
+                {formatETB(totalRemaining)}
+              </h3>
+            </div>
+            <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-600">
+              <Wallet className="w-5 h-5" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border shadow-xs">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2.5 rounded-lg bg-emerald-50 text-emerald-700">
-              <GraduationCap className="w-5 h-5" />
+        <Card className="border shadow-2xs">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">Active Cost Sharing Staff</p>
+              <h3 className="text-xl font-bold font-mono tracking-tight text-foreground">
+                {activeCount} Employees
+              </h3>
             </div>
-            <div>
-              <p className="text-xs text-gray-500 font-medium">Outstanding Balance</p>
-              <h4 className="text-lg font-bold text-gray-900">ETB {totalRemaining.toLocaleString("en-US", { minimumFractionDigits: 2 })}</h4>
+            <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-600">
+              <Users className="w-5 h-5" />
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Header and Controls */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h3 className="text-base font-semibold text-gray-800">
-            Higher Education Cost Sharing (Statutory 10%)
-          </h3>
-          <p className="text-sm text-gray-500">
-            Automated statutory 10% basic salary deduction until government graduate obligation is cleared.
-          </p>
-        </div>
-        <Button
-          onClick={() => setDialogOpen(true)}
-          style={{ backgroundColor: primaryColor }}
-          className="text-white hover:opacity-90 transition-opacity gap-1.5"
-        >
-          <Plus className="w-4 h-4" /> Register Cost Sharing
-        </Button>
-      </div>
+      {/* TanStack Table Data Grid */}
+      <DataTable
+        title="Higher Education Cost Sharing Ledger"
+        description="Ethiopian statutory higher education repayment: automated 10% withholding from taxable basic salary."
+        columns={columns}
+        data={items}
+        loading={isCostLoading}
+        searchPlaceholder="Search cost sharing records by employee or university..."
+        onAdd={() => {
+          resetForm();
+          setDialogOpen(true);
+        }}
+        onRefresh={() => refetch()}
+        pageSize={10}
+      />
 
-      {/* Search Bar */}
-      <div className="relative max-w-sm">
-        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-        <Input
-          placeholder="Search by employee name, ID or institution..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9 bg-white"
-        />
-      </div>
-
-      {/* Responsive Table */}
-      <div className="border rounded-lg overflow-x-auto bg-white shadow-xs">
-        <Table>
-          <TableHeader className="bg-gray-50">
-            <TableRow>
-              <TableHead>Employee</TableHead>
-              <TableHead>Higher Institution</TableHead>
-              <TableHead className="text-right">Total Obligation (ETB)</TableHead>
-              <TableHead className="text-right">Statutory Deduction</TableHead>
-              <TableHead className="text-right">Remaining Balance (ETB)</TableHead>
-              <TableHead className="text-center">Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                  <div className="flex items-center justify-center gap-2">
-                    <span className="animate-spin">â ³</span> Loading cost sharing records...
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : filteredItems.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center py-10 text-gray-500">
-                  <div className="flex flex-col items-center justify-center gap-2">
-                    <GraduationCap className="w-8 h-8 text-gray-300" />
-                    <p className="font-medium text-gray-600">No cost sharing records found.</p>
-                    <p className="text-xs text-gray-400">Click 'Register Cost Sharing' to record graduate obligations.</p>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : filteredItems.map((cs) => (
-              <TableRow key={cs.id} className="hover:bg-gray-50/80 transition-colors">
-                <TableCell className="font-medium">
-                  <div>{cs.employee?.fullName || "Employee"}</div>
-                  <span className="text-xs text-gray-400 font-mono">{cs.employee?.employeeId || cs.employeeId}</span>
-                </TableCell>
-                <TableCell>{cs.university || cs.universityName || "Higher Education Institution"}</TableCell>
-                <TableCell className="text-right font-mono font-medium">
-                  {Number(cs.totalObligation || cs.totalCommitment || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                </TableCell>
-                <TableCell className="text-right font-mono font-bold" style={{ color: primaryColor }}>
-                  {((cs.deductionPercent || (cs.deductionRate ? cs.deductionRate / 100 : 0.10)) * 100).toFixed(0)}% Basic
-                </TableCell>
-                <TableCell className="text-right font-mono font-bold text-emerald-700">
-                  {Number(cs.remainingBalance || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                </TableCell>
-                <TableCell className="text-center">
-                  <Badge variant={cs.status === "ACTIVE" ? "default" : "secondary"} className={cs.status === "ACTIVE" ? "bg-emerald-600" : ""}>
-                    {cs.status || "ACTIVE"}
-                  </Badge>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-
-      {/* Registration Dialog */}
+      {/* Add Agreement Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold">Register Cost Sharing Obligation</DialogTitle>
+            <DialogTitle className="text-lg font-bold flex items-center gap-2">
+              <GraduationCap className="w-5 h-5 text-primary" /> Record Cost Sharing Agreement
+            </DialogTitle>
+            <DialogDescription>
+              Assign higher education cost sharing obligation per Ministry of Revenues regulations.
+              A standard 10% will be deducted from taxable earnings until the obligation is cleared.
+            </DialogDescription>
           </DialogHeader>
+
           <form onSubmit={handleSave} className="space-y-4 py-2">
-            <div>
-              <Label htmlFor="emp">Select Employee *</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="csEmp">Employee *</Label>
               <Select value={employeeId} onValueChange={setEmployeeId}>
-                <SelectTrigger id="emp"><SelectValue placeholder="Choose employee" /></SelectTrigger>
-                <SelectContent>
-                  {employees.map(e => (
-                    <SelectItem key={e.employeeIdDb || e.id} value={e.employeeIdDb || e.id}>
-                      {e.employeeId} - {e.fullName}
+                <SelectTrigger id="csEmp">
+                  <SelectValue placeholder="Choose employee" />
+                </SelectTrigger>
+                <SelectContent className="max-h-60">
+                  {employees.map((e) => (
+                    <SelectItem key={e.employeeIdDb} value={e.employeeIdDb}>
+                      {e.employeeId} — {e.fullName}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
-            <div>
-              <Label htmlFor="uni">Higher Education Institution / University</Label>
-              <Input id="uni" placeholder="e.g. Addis Ababa University" value={university} onChange={e => setUniversity(e.target.value)} />
+            <div className="space-y-1.5">
+              <Label htmlFor="uniInput">University / Higher Education Institution</Label>
+              <Input
+                id="uniInput"
+                placeholder="e.g. Addis Ababa University"
+                value={university}
+                onChange={(e) => setUniversity(e.target.value)}
+              />
             </div>
 
-            <div>
-              <Label htmlFor="total">Total Ministry Obligation (ETB) *</Label>
-              <Input id="total" type="number" step="0.01" value={totalCost || ""} onChange={e => setTotalCost(parseFloat(e.target.value) || 0)} required />
-              <p className="text-xs text-gray-500 mt-1">Deducted at 10% of basic salary per month until completed.</p>
+            <div className="space-y-1.5">
+              <Label htmlFor="costInput">Total Obligation Amount (ETB) *</Label>
+              <Input
+                id="costInput"
+                type="number"
+                step="0.01"
+                placeholder="0.00"
+                value={totalCost}
+                onChange={(e) =>
+                  setTotalCost(e.target.value === "" ? "" : parseFloat(e.target.value))
+                }
+                required
+              />
             </div>
 
-            <DialogFooter className="gap-2 sm:gap-0">
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={saving} style={{ backgroundColor: primaryColor }} className="text-white">
-                {saving ? "Saving..." : "Register"}
+            <div className="p-3 bg-muted/50 rounded-lg border text-xs text-muted-foreground space-y-1">
+              <div className="font-semibold text-foreground flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" /> Statutory Rate: 10%
+              </div>
+              <p>
+                Deduction occurs automatically during every active payroll run until the remaining
+                obligation balance is amortized to zero.
+              </p>
+            </div>
+
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={saveMutation.isPending || !employeeId || !totalCost}
+              >
+                {saveMutation.isPending ? "Recording..." : "Record Obligation"}
               </Button>
             </DialogFooter>
           </form>

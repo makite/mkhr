@@ -1,26 +1,68 @@
-import { useEffect, useState, useMemo } from "react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import React, { useState, useMemo } from "react";
+import { type ColumnDef } from "@tanstack/react-table";
+import { DataTable } from "@/components/shared/table-data";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent } from "@/components/ui/card";
-import { type EmployeePayrollProfile, type Bank, payrollService } from "../services/payroll-service";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  type EmployeePayrollProfile,
+} from "../services/payroll-service";
+import {
+  usePayrollEmployeeProfiles,
+  usePayrollBanks,
+  useUpdateBankDetailsMutation,
+  useAcceptEmployeeMutation,
+  useSkipEmployeeMutation,
+} from "../services/use-payroll-queries";
 import { useCompanyBranding } from "@/services/company-branding";
-import { Search, UserCheck, UserX, Users, Edit3 } from "lucide-react";
-import { toast } from "sonner";
+import { formatETB } from "@/lib/utils";
+import {
+  Users,
+  CreditCard,
+  UserCheck,
+  UserX,
+  MoreHorizontal,
+  AlertTriangle,
+  Landmark,
+} from "lucide-react";
 
 export default function PayrollEmployeesPage() {
   const branding = useCompanyBranding();
-  const primaryColor = branding?.primaryColor || "#1e40af";
 
-  const [employees, setEmployees] = useState<EmployeePayrollProfile[]>([]);
-  const [banks, setBanks] = useState<Bank[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  // Queries
+  const { data: employees = [], isLoading: isEmpLoading, refetch } = usePayrollEmployeeProfiles();
+  const { data: banks = [] } = usePayrollBanks();
+
+  // Mutations
+  const updateBankMutation = useUpdateBankDetailsMutation();
+  const acceptMutation = useAcceptEmployeeMutation();
+  const skipMutation = useSkipEmployeeMutation();
 
   // Bank Editor Modal State
   const [bankModalOpen, setBankModalOpen] = useState(false);
@@ -29,32 +71,10 @@ export default function PayrollEmployeesPage() {
   const [bankAccountNo, setBankAccountNo] = useState("");
   const [bankBranch, setBankBranch] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("BANK_TRANSFER");
-  const [savingBank, setSavingBank] = useState(false);
 
   // Skip Reason Modal State
   const [skipModalOpen, setSkipModalOpen] = useState(false);
   const [skipReason, setSkipReason] = useState("");
-  const [toggling, setToggling] = useState(false);
-
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const [profs, bankList] = await Promise.all([
-        payrollService.getEmployeeProfiles(),
-        payrollService.getBanks(),
-      ]);
-      setEmployees(profs || []);
-      setBanks(bankList || []);
-    } catch (err: any) {
-      toast.error(err.message || "Failed to load employee profiles.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadData();
-  }, []);
 
   const openBankEditor = (emp: EmployeePayrollProfile) => {
     setSelectedEmp(emp);
@@ -68,32 +88,22 @@ export default function PayrollEmployeesPage() {
   const handleSaveBank = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedEmp) return;
-    setSavingBank(true);
-    try {
-      await payrollService.updateBankDetails(selectedEmp.employeeIdDb, {
+
+    await updateBankMutation.mutateAsync({
+      employeeId: selectedEmp.employeeIdDb,
+      data: {
         bankName,
         accountNumber: bankAccountNo,
         bankBranchName: bankBranch,
-        paymentMethod: paymentMethod as any,
-      });
-      toast.success(`Updated disbursement details for ${selectedEmp.fullName}`);
-      setBankModalOpen(false);
-      loadData();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to update bank details.");
-    } finally {
-      setSavingBank(false);
-    }
+        paymentMethod,
+      },
+    });
+
+    setBankModalOpen(false);
   };
 
   const handleAccept = async (emp: EmployeePayrollProfile) => {
-    try {
-      await payrollService.acceptEmployee(emp.employeeIdDb);
-      toast.success(`${emp.fullName} is now ACCEPTED for payroll calculation.`);
-      loadData();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to accept employee.");
-    }
+    await acceptMutation.mutateAsync(emp.employeeIdDb);
   };
 
   const handleSkipPrompt = (emp: EmployeePayrollProfile) => {
@@ -105,270 +115,335 @@ export default function PayrollEmployeesPage() {
   const handleConfirmSkip = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedEmp) return;
-    setToggling(true);
-    try {
-      await payrollService.skipEmployee(selectedEmp.employeeIdDb, skipReason);
-      toast.warning(`${selectedEmp.fullName} will be SKIPPED in next payroll run.`);
-      setSkipModalOpen(false);
-      loadData();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to skip employee.");
-    } finally {
-      setToggling(false);
-    }
+
+    await skipMutation.mutateAsync({
+      employeeId: selectedEmp.employeeIdDb,
+      reason: skipReason.trim() || "Administrative hold",
+    });
+
+    setSkipModalOpen(false);
   };
 
-  const filtered = useMemo(() => {
-    if (!search.trim()) return employees;
-    const q = search.toLowerCase();
-    return employees.filter(
-      (e) =>
-        e.fullName?.toLowerCase().includes(q) ||
-        e.employeeId?.toLowerCase().includes(q) ||
-        e.department?.toLowerCase().includes(q) ||
-        e.bankName?.toLowerCase().includes(q)
-    );
-  }, [employees, search]);
+  // Metrics
+  const totalEmployees = employees.length;
+  const bankTransferCount = useMemo(
+    () => employees.filter((e) => (e.paymentMethod || "BANK_TRANSFER") === "BANK_TRANSFER").length,
+    [employees]
+  );
+  const skippedCount = useMemo(
+    () => employees.filter((e) => e.skipFromPayroll).length,
+    [employees]
+  );
+  const missingBankCount = useMemo(
+    () =>
+      employees.filter(
+        (e) =>
+          (!e.bankAccountNo || !e.bankName) && (e.paymentMethod || "BANK_TRANSFER") === "BANK_TRANSFER"
+      ).length,
+    [employees]
+  );
 
-  const acceptedCount = useMemo(() => employees.filter(e => e.eligibility === "ACCEPTED").length, [employees]);
-  const skippedCount = useMemo(() => employees.filter(e => e.eligibility === "SKIPPED").length, [employees]);
+  const columns = useMemo<ColumnDef<EmployeePayrollProfile>[]>(
+    () => [
+      {
+        accessorKey: "employeeId",
+        header: "Employee",
+        cell: ({ row }) => {
+          const emp = row.original;
+          return (
+            <div className="flex flex-col">
+              <span className="font-semibold text-foreground text-sm">{emp.fullName}</span>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="font-mono">{emp.employeeId}</span>
+                {emp.fullNameAm && (
+                  <span className="font-amharic text-[11px] text-muted-foreground/80">
+                    ({emp.fullNameAm})
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: "department",
+        header: "Dept & Branch",
+        cell: ({ row }) => {
+          const emp = row.original;
+          return (
+            <div className="flex flex-col text-xs">
+              <span className="font-medium text-foreground">{emp.department || "General"}</span>
+              <span className="text-muted-foreground">{emp.branch || emp.payrollBranch || "Main HQ"}</span>
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: "basicSalary",
+        header: () => <div className="text-right">Base Salary (ETB)</div>,
+        cell: ({ row }) => (
+          <div className="text-right font-mono font-bold text-foreground text-sm">
+            {formatETB(row.original.basicSalary)}
+          </div>
+        ),
+      },
+      {
+        accessorKey: "bankDetails",
+        header: "Disbursement & Account",
+        cell: ({ row }) => {
+          const emp = row.original;
+          const isBank = (emp.paymentMethod || "BANK_TRANSFER") === "BANK_TRANSFER";
+
+          if (!isBank) {
+            return (
+              <Badge variant="outline" className="text-xs bg-muted text-muted-foreground">
+                {emp.paymentMethod || "CASH / CHEQUE"}
+              </Badge>
+            );
+          }
+
+          if (!emp.bankAccountNo) {
+            return (
+              <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-600 border-amber-500/20 flex items-center gap-1 w-fit">
+                <AlertTriangle className="w-3 h-3" /> Missing Account
+              </Badge>
+            );
+          }
+
+          return (
+            <div className="flex flex-col text-xs">
+              <span className="font-medium text-foreground flex items-center gap-1.5">
+                <Landmark className="w-3.5 h-3.5 text-primary" /> {emp.bankName || "Commercial Bank"}
+              </span>
+              <span className="font-mono text-muted-foreground">
+                {emp.bankAccountNo} {emp.bankBranch ? `(${emp.bankBranch})` : ""}
+              </span>
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: "skipFromPayroll",
+        header: "Payroll Status",
+        cell: ({ row }) => {
+          const isSkipped = row.original.skipFromPayroll;
+          if (isSkipped) {
+            return (
+              <div className="flex flex-col gap-0.5">
+                <Badge variant="outline" className="bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/20 w-fit">
+                  <UserX className="w-3 h-3 mr-1" /> On Hold / Skipped
+                </Badge>
+                {row.original.skipReason && (
+                  <span className="text-[10px] text-muted-foreground line-clamp-1">
+                    {row.original.skipReason}
+                  </span>
+                )}
+              </div>
+            );
+          }
+
+          return (
+            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20 w-fit">
+              <UserCheck className="w-3 h-3 mr-1" /> Eligible & Active
+            </Badge>
+          );
+        },
+      },
+      {
+        id: "actions",
+        header: () => <div className="text-right">Actions</div>,
+        cell: ({ row }) => {
+          const emp = row.original;
+          return (
+            <div className="flex justify-end">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                    <MoreHorizontal className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuLabel>Disbursement Controls</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => openBankEditor(emp)} className="cursor-pointer">
+                    <CreditCard className="w-4 h-4 mr-2 text-primary" /> Edit Bank Details
+                  </DropdownMenuItem>
+                  {emp.skipFromPayroll ? (
+                    <DropdownMenuItem
+                      onClick={() => handleAccept(emp)}
+                      className="cursor-pointer text-emerald-600 focus:text-emerald-600"
+                    >
+                      <UserCheck className="w-4 h-4 mr-2" /> Mark Eligible (Accept)
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem
+                      onClick={() => handleSkipPrompt(emp)}
+                      className="cursor-pointer text-rose-600 focus:text-rose-600"
+                    >
+                      <UserX className="w-4 h-4 mr-2" /> Put On Hold (Skip)
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          );
+        },
+      },
+    ],
+    []
+  );
 
   return (
     <div className="flex w-full min-w-sm flex-col gap-6 p-4 md:p-6 max-w-7xl mx-auto">
-      <div>
-        <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-gray-900">
-          Employee Payroll Profiles &amp; Bank Details
-        </h1>
-        <p className="text-sm text-gray-500 mt-1">
-          {branding?.companyName || "Meku"} disbursement methods, assigned bank accounts, and monthly payroll eligibility (Accept / Skip).
-        </p>
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-foreground">
+            Payroll Employee Master &amp; Banking
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {branding?.companyName || "Meku"} staff compensation profiles, commercial bank disbursement accounts, and payroll eligibility exclusions.
+          </p>
+        </div>
       </div>
 
-      {/* Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="border shadow-xs">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2.5 rounded-lg bg-blue-50 text-blue-700">
+      {/* KPI Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="border shadow-2xs">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">Total Staff Profiles</p>
+              <h3 className="text-2xl font-bold tracking-tight text-foreground">{totalEmployees}</h3>
+            </div>
+            <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
               <Users className="w-5 h-5" />
             </div>
-            <div>
-              <p className="text-xs text-gray-500 font-medium">Total Active Workforce</p>
-              <h4 className="text-lg font-bold text-gray-900">{employees.length} Staff</h4>
+          </CardContent>
+        </Card>
+
+        <Card className="border shadow-2xs">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">Bank Transfer Beneficiaries</p>
+              <h3 className="text-2xl font-bold tracking-tight text-foreground">{bankTransferCount}</h3>
+            </div>
+            <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-600">
+              <Landmark className="w-5 h-5" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border shadow-xs">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2.5 rounded-lg bg-emerald-50 text-emerald-700">
-              <UserCheck className="w-5 h-5" />
+        <Card className="border shadow-2xs">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">On Hold / Skipped Staff</p>
+              <h3 className="text-2xl font-bold tracking-tight text-foreground">{skippedCount}</h3>
             </div>
-            <div>
-              <p className="text-xs text-gray-500 font-medium">Eligible for Payroll</p>
-              <h4 className="text-lg font-bold text-emerald-700">{acceptedCount} Accepted</h4>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border shadow-xs">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2.5 rounded-lg bg-amber-50 text-amber-700">
+            <div className="p-2.5 rounded-xl bg-rose-500/10 text-rose-600">
               <UserX className="w-5 h-5" />
             </div>
-            <div>
-              <p className="text-xs text-gray-500 font-medium">Skipped From Run</p>
-              <h4 className="text-lg font-bold text-amber-700">{skippedCount} Excluded</h4>
+          </CardContent>
+        </Card>
+
+        <Card className="border shadow-2xs">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">Missing Bank Information</p>
+              <h3 className="text-2xl font-bold tracking-tight text-foreground">{missingBankCount}</h3>
+            </div>
+            <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-600">
+              <AlertTriangle className="w-5 h-5" />
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Search and Filters */}
-      <div className="relative max-w-sm">
-        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-        <Input
-          placeholder="Search by employee name, ID, branch or bank..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9 bg-white"
-        />
-      </div>
+      {/* TanStack Table Data Grid */}
+      <DataTable
+        title="Employee Disbursement Directory"
+        description="Verify commercial bank branch routing, swift accounts, and active status for payroll runs."
+        columns={columns}
+        data={employees}
+        loading={isEmpLoading}
+        searchPlaceholder="Search staff by full name, ID, or bank account..."
+        onRefresh={() => refetch()}
+        pageSize={10}
+      />
 
-      {/* Employee Profiles Table */}
-      <div className="border rounded-lg overflow-x-auto bg-white shadow-xs">
-        <Table>
-          <TableHeader className="bg-gray-50">
-            <TableRow>
-              <TableHead>Employee</TableHead>
-              <TableHead>Department / Branch</TableHead>
-              <TableHead className="text-right">Basic Salary (ETB)</TableHead>
-              <TableHead>Payment Method</TableHead>
-              <TableHead>Bank &amp; Account</TableHead>
-              <TableHead className="text-center">Payroll Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-                  <div className="flex items-center justify-center gap-2">
-                    <span className="animate-spin">â ³</span> Loading employee payroll profiles...
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : filtered.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-                  No employee profiles matched the search.
-                </TableCell>
-              </TableRow>
-            ) : (
-              filtered.map((emp) => (
-                <TableRow key={emp.employeeIdDb} className="hover:bg-gray-50/60">
-                  <TableCell className="font-medium">
-                    <div className="font-semibold text-gray-900">{emp.fullName}</div>
-                    <span className="text-xs text-gray-400 font-mono">{emp.employeeId}</span>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-xs text-gray-900">{emp.department || "General"}</div>
-                    <span className="text-[11px] text-gray-500">{emp.payrollBranch || "Head Office"}</span>
-                  </TableCell>
-                  <TableCell className="text-right font-mono font-medium text-gray-900">
-                    {Number(emp.basicSalary || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="text-xs">
-                      {emp.paymentMethod?.replace("_", " ") || "BANK TRANSFER"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {emp.paymentMethod === "CASH" ? (
-                      <span className="text-xs text-gray-500 italic">Disbursed in Cash</span>
-                    ) : (
-                      <div>
-                        <div className="text-xs font-semibold text-gray-900">{emp.bankName || "Commercial Bank of Ethiopia"}</div>
-                        <span className="text-xs text-gray-500 font-mono">{emp.bankAccountNo || "No Account Assigned"}</span>
-                      </div>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <Badge
-                      variant={emp.eligibility === "ACCEPTED" ? "default" : "destructive"}
-                      className={emp.eligibility === "ACCEPTED" ? "bg-emerald-600" : "bg-amber-600"}
-                    >
-                      {emp.eligibility}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1.5">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openBankEditor(emp)}
-                        className="text-xs gap-1"
-                      >
-                        <Edit3 className="w-3.5 h-3.5 text-gray-500" /> Bank
-                      </Button>
-                      {emp.eligibility === "ACCEPTED" ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleSkipPrompt(emp)}
-                          className="text-xs text-amber-700 border-amber-200 hover:bg-amber-50"
-                        >
-                          Skip
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleAccept(emp)}
-                          className="text-xs text-emerald-700 border-emerald-200 hover:bg-emerald-50"
-                        >
-                          Accept
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
-      {/* Bank Account Modal */}
+      {/* Bank Account Editor Dialog */}
       <Dialog open={bankModalOpen} onOpenChange={setBankModalOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold">
-              Disbursement Details: {selectedEmp?.fullName}
+            <DialogTitle className="text-lg font-bold flex items-center gap-2">
+              <CreditCard className="w-5 h-5 text-primary" /> Edit Bank Details
             </DialogTitle>
+            <DialogDescription>
+              Configure commercial banking disbursement for <strong>{selectedEmp?.fullName}</strong>.
+            </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleSaveBank} className="space-y-4 py-2">
-            <div>
-              <Label htmlFor="pm">Disbursement Method</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="payMethod">Disbursement Method *</Label>
               <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                <SelectTrigger id="pm"><SelectValue /></SelectTrigger>
+                <SelectTrigger id="payMethod">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="BANK_TRANSFER">Bank Transfer (Direct Deposit)</SelectItem>
-                  <SelectItem value="CASH">Cash Payment</SelectItem>
-                  <SelectItem value="CHEQUE">Company Cheque</SelectItem>
+                  <SelectItem value="BANK_TRANSFER">Commercial Bank Transfer</SelectItem>
+                  <SelectItem value="CHEQUE">Corporate Cheque</SelectItem>
+                  <SelectItem value="CASH">Cash Paypoint</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             {paymentMethod === "BANK_TRANSFER" && (
               <>
-                <div>
-                  <Label htmlFor="bank">Commercial Bank</Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="bankSelect">Commercial Bank *</Label>
                   <Select value={bankName} onValueChange={setBankName}>
-                    <SelectTrigger id="bank"><SelectValue placeholder="Select Bank" /></SelectTrigger>
-                    <SelectContent>
+                    <SelectTrigger id="bankSelect">
+                      <SelectValue placeholder="Choose bank" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60">
                       {banks.map((b) => (
                         <SelectItem key={b.id} value={b.name}>
                           {b.name} ({b.code})
                         </SelectItem>
                       ))}
-                      <SelectItem value="Commercial Bank of Ethiopia">Commercial Bank of Ethiopia</SelectItem>
-                      <SelectItem value="Awash International Bank">Awash International Bank</SelectItem>
-                      <SelectItem value="Dashen Bank">Dashen Bank</SelectItem>
-                      <SelectItem value="Bank of Abyssinia">Bank of Abyssinia</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
-                <div>
-                  <Label htmlFor="acc">Bank Account Number *</Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="accNo">Bank Account Number *</Label>
                   <Input
-                    id="acc"
+                    id="accNo"
+                    placeholder="e.g. 1000123456789"
                     value={bankAccountNo}
                     onChange={(e) => setBankAccountNo(e.target.value)}
-                    placeholder="e.g. 1000123456789"
-                    className="font-mono mt-1"
                     required
                   />
                 </div>
 
-                <div>
-                  <Label htmlFor="branch">Bank Branch Location</Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="branchName">Branch Name / Location</Label>
                   <Input
-                    id="branch"
+                    id="branchName"
+                    placeholder="e.g. Bole Medhanialem Branch"
                     value={bankBranch}
                     onChange={(e) => setBankBranch(e.target.value)}
-                    placeholder="e.g. Bole Medhanialem Branch"
-                    className="mt-1"
                   />
                 </div>
               </>
             )}
 
-            <DialogFooter className="gap-2 sm:gap-0">
-              <Button type="button" variant="outline" onClick={() => setBankModalOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={savingBank} style={{ backgroundColor: primaryColor }} className="text-white">
-                {savingBank ? "Saving..." : "Save Details"}
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="outline" onClick={() => setBankModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={updateBankMutation.isPending}>
+                {updateBankMutation.isPending ? "Saving..." : "Save Disbursement Details"}
               </Button>
             </DialogFooter>
           </form>
@@ -379,32 +454,38 @@ export default function PayrollEmployeesPage() {
       <Dialog open={skipModalOpen} onOpenChange={setSkipModalOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-amber-700">
-              Skip from Current Payroll Run
+            <DialogTitle className="text-lg font-bold text-rose-600 flex items-center gap-2">
+              <UserX className="w-5 h-5" /> Put Employee On Hold
             </DialogTitle>
+            <DialogDescription>
+              Holding an employee will exclude them from calculation during upcoming payroll cycles
+              until explicitly accepted.
+            </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleConfirmSkip} className="space-y-4 py-2">
-            <p className="text-sm text-gray-600">
-              Are you sure you want to exclude <strong>{selectedEmp?.fullName}</strong> from the upcoming calculation?
-            </p>
-
-            <div>
-              <Label htmlFor="reason">Exclusion Justification / Remarks *</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="holdReason">Reason for Hold *</Label>
               <Textarea
-                id="reason"
+                id="holdReason"
+                placeholder="e.g. Unpaid sabbatical leave, disciplinary investigation, pending clearance..."
+                rows={3}
                 value={skipReason}
                 onChange={(e) => setSkipReason(e.target.value)}
-                placeholder="e.g. Leave without pay, pending disciplinary clearance, final settlement on hold..."
                 required
-                className="mt-1"
               />
             </div>
 
-            <DialogFooter className="gap-2 sm:gap-0">
-              <Button type="button" variant="outline" onClick={() => setSkipModalOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={toggling} variant="destructive">
-                {toggling ? "Excluding..." : "Confirm Skip"}
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="outline" onClick={() => setSkipModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className="bg-rose-600 hover:bg-rose-700 text-white"
+                disabled={skipMutation.isPending || !skipReason.trim()}
+              >
+                {skipMutation.isPending ? "Putting on hold..." : "Confirm Hold"}
               </Button>
             </DialogFooter>
           </form>
